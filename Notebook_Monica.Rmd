@@ -42,6 +42,9 @@ colnames(dt.trade)
 #countrylist
 l.countries <- as.list(unique(dt.trade$reporter_name))
 
+
+dt.trade <- dt.trade[complete.cases(dt.trade), ]
+
 ```
 
 Network
@@ -83,21 +86,15 @@ all.exporters <- dt.trade.country.year[, list(name=unique(partner_name), type=FA
 
 all.vertices <- rbind(all.importers, all.exporters)
 
+
+
+
 # Create the graph
 g1 <- graph.data.frame(dt.trade.country.year[, list(reporter_name, partner_name)],
-                       directed=TRUE, vertices=all.vertices)
+                       directed=TRUE)
 
-# Get the edge and vertex coordinates
-edges_df <- data.frame(get.edgelist(g1))
-
-
-vertices_df <- get.data.frame(g1, what = "vertices")
-# Get the vertex attributes
-#vertices_df <- as_data_frame(V(g1))
-vertices_df$long <- ifelse(V(g1)$type, vertices_df$reporter_long, vertices_df$partner_long)
-vertices_df$lat <- ifelse(V(g1)$type, vertices_df$reporter_lat, vertices_df$partner_lat)
-vertices_df <- vertices_df[, c("name", "long", "lat")]
-
+# Get the vertex data frame
+vertices_df <- as_data_frame(g1)
 
 # Update the long and lat values based on the type attribute
 vertices_df$long <- ifelse(vertices_df$type, vertices_df$reporter_long, vertices_df$partner_long)
@@ -106,15 +103,16 @@ vertices_df$lat <- ifelse(vertices_df$type, vertices_df$reporter_lat, vertices_d
 # Select only the name, long, and lat columns
 vertices_df <- vertices_df[, c("name", "long", "lat")]
 
-
-
-
 # Create a leaflet map
 map <- leaflet(vertices_df) %>% addTiles() %>%
   addPolylines(data=edges_df, lng1 = ~long.x, lat1 = ~lat.x, lng2 = ~long.y, lat2 = ~lat.y)
 
 # Show the map
 map
+
+
+
+
 
 
 ```
