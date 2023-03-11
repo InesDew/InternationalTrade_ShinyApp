@@ -41,17 +41,15 @@ plot(g, vertex.size = 5, vertex.label.cex = 0.6)
 ```{r}
 # 1. Make edge list
 dt.trade.year <- dt.trade[year == 2017]
-#dt.trade.year
+dt.trade.year
 dt.trade.edgelist <- dt.trade.year[ , c('reporter_name', 'partner_name')]
-#dt.trade.edgelist
+dt.trade.edgelist
 
 
 # 2. Convert edge list to an igraph network
 # igraph wants our data in matrix format
 m.trade <- as.matrix(dt.trade.edgelist) 
 g.trade <- graph_from_edgelist(m.trade, directed=TRUE)
-  # Eliminate self-loops (first we must remove the loops out of trade_value_usd before we can do this)
-  #g.trade <- simplify(g.trade, remove.multiple = FALSE, remove.loops = TRUE) #eliminate self-loops
 
 
 # 3. Set the weight of the edges (trade_value_usd)
@@ -60,15 +58,18 @@ edge.attributes(g.trade)$weight <- dt.trade.year$trade_value_usd
 
 
 # 4. Add attributes to the vertices (continent)
-# Reorder the attributes to match the order that the individuals appear as network vertices
-countries <- dt.trade.year[reporter_name %in% V(g.trade)$name,]
-countries <- countries[match(V(g.trade)$name, countries$reporter_name), ]
-# We assign the dataframe columns as vertex attributes, e.g., 
-V(g.trade)$continent <- countries$reporter_continent
+library(rjson)
+json_data <- fromJSON(file='../../data/sample.json')
+V(g.trade)$continent <-  unlist(json_data[V(g.trade)$name])
 
 # 5. Plot igraph
 plot(g.trade, vertex.size = 5, vertex.label.cex = 0.3, edge.arrow.size=0.4)
 ```
+```{r}
+# Check all the vertices
+V(g.trade)$name
+V(g.trade)$continent
 
+```
 
 
