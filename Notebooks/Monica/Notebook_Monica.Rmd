@@ -18,7 +18,7 @@ library(bslib)
 library(sf)
 
 # Load data from file comptab_2018-01-29 16_00_comma_separated.csv 
-dt.trade <- fread("cleaned_trade_data.csv") 
+dt.trade <- fread("../../data/cleaned_trade_data.csv") 
 
 
 # Save dt.movie.actor. Next time you can simply call the load function (below)
@@ -45,6 +45,10 @@ l.countries <- as.list(unique(dt.trade$reporter_name))
 
 dt.trade <- dt.trade[complete.cases(dt.trade), ]
 
+
+dt.country.coordinates <- dt.trade %>% distinct(partner_name, .keep_all = TRUE)
+dt.country.coordinates <- dt.country.coordinates[, c("partner_name", "partner_lat", "partner_long")]
+meta <- dt.country.coordinates %>% rename("name" = "partner_name", "lat" = "partner_lat", "lon" = "partner_long")
 ```
 
 Network
@@ -87,8 +91,6 @@ all.exporters <- dt.trade.country.year[, list(name=unique(partner_name), type=FA
 all.vertices <- rbind(all.importers, all.exporters)
 
 
-
-
 # Create the graph
 g1 <- graph.data.frame(dt.trade.country.year[, list(reporter_name, partner_name)],
                        directed=TRUE)
@@ -118,12 +120,59 @@ map
 ```
 
 ```{r}
+
+#MAP 3 ATTEMPT
+
+library(sp)
+library(igraph)
+library(leaflet)
+
+# Subset the data to the country and year of interest
+dt.trade.country <- dt.trade[reporter_name == "Hungary"]
+dt.trade.country.year <- dt.trade.country[year == 2018]
+
+df<-data.frame("from" = dt.trade.country.year$reporter_name, 
+               "to"= dt.trade.country.year$partner_name)
+
+
+g <- graph.data.frame(df, directed=FALSE, vertices=meta)
+
+
+gg <- get.data.frame(g, "both")
+vert <- gg$vertices
+coordinates(vert) <- ~lon + lat
+
+edges <- gg$edges
+
+edges <- lapply(1:nrow(edges), function(i) {
+  as(rbind(vert[vert$name == edges[i, "from"], ], 
+           vert[vert$name == edges[i, "to"], ]), 
+     "SpatialLines")
+})
+
+
+for (i in seq_along(edges)) {
+  edges[[i]] <- spChFIDs(edges[[i]], as.character(i))
+}
+
+edges <- do.call(rbind, edges)
+
+
+library(leaflet)
+leaflet(vert) %>% addTiles() %>% addCircleMarkers(data = vert,radius = 2, 
+    color = "red", 
+    fillColor = "red", 
+    fillOpacity = 0.8,
+    stroke = FALSE) %>% addPolylines(data = edges, weight = 1, color = "blue")
+```
+
+```{r}
 #ONLY MAP, NO SHINY APP 
 library(tidyverse)
 library(leaflet)
 library(leaflet.extras)
 
-dt.trade.country <- dt.trade[reporter_name == "Afghanistan"]
+dt.trade.country <- dt.trade[reporter_name == "Portugal"]
 dt.trade.country.year <- dt.trade.country[year == 2018]
 
 
