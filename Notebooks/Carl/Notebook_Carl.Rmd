@@ -4,6 +4,8 @@ library(data.table)
 library(ggplot2)
 library(igraph) 
 library(DT)
+library(rjson)
+library(bslib)
 
 # Load data
 dt.trade <- fread("../../data/cleaned_trade_data.csv")
@@ -105,7 +107,6 @@ server <- function(input, output, session) {
     # Sum the weights for duplicate edges (we would need this if we select           # multiple years) TODO
     
     # 4. Add attributes to the vertices (continent)
-    library(rjson)
     json_data <- fromJSON(file='../../data/sample.json')
     V(g.trade)$continent <-  unlist(json_data[V(g.trade)$name])
     
