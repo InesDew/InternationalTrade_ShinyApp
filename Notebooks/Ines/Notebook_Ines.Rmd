@@ -1,0 +1,75 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r}
+library(data.table)     # Run once per session
+library(ggplot2)        # Run once per session
+library(igraph)         # Run once per session
+
+dt.trade <- fread("../../data/cleaned_trade_data.csv")
+dt.trade
+```
+
+
+```{r}
+# Set the parameters
+dt.trade.country <- dt.trade[reporter_name == "Afghanistan"]
+dt.trade.country.year <- dt.trade.country[year == 2017]
+
+# Set the vertices
+dt.all.reporters <- dt.trade.country.year[, list(name=unique(reporter_name), type=FALSE)]
+dt.all.partners <- dt.trade.country.year[, list(name=unique(partner_name), type=TRUE)]
+
+dt.all.vertices <- rbind(dt.all.reporters, dt.all.partners)
+
+# Create & plot the graph
+g <- graph.data.frame(dt.trade.country.year[, list(reporter_name, partner_name)], directed=TRUE, vertices=dt.all.vertices)
+
+plot(g, vertex.size = 5, vertex.label.cex = 0.6)
+
+# Add weights to the graph & plot
+g <- set_edge_attr(g, "weight", value= dt.trade.country.year$trade_value_usd)
+
+plot(g, vertex.size = 5, vertex.label.cex = 0.6)
+```
+
+
+```{r}
+# 1. Make edge list
+dt.trade.year <- dt.trade[year == 2017]
+dt.trade.year
+dt.trade.edgelist <- dt.trade.year[ , c('reporter_name', 'partner_name')]
+dt.trade.edgelist
+
+
+# 2. Convert edge list to an igraph network
+# igraph wants our data in matrix format
+m.trade <- as.matrix(dt.trade.edgelist) 
+g.trade <- graph_from_edgelist(m.trade, directed=TRUE)
+
+
+# 3. Set the weight of the edges (trade_value_usd)
+edge.attributes(g.trade)$weight <- dt.trade.year$trade_value_usd
+  # Sum the weights for duplicate edges (we would need this if we select multiple years)
+
+
+# 4. Add attributes to the vertices (continent)
+library(rjson)
+json_data <- fromJSON(file='../../data/sample.json')
+V(g.trade)$continent <-  unlist(json_data[V(g.trade)$name])
+
+# 5. Plot igraph
+plot(g.trade, vertex.size = 5, vertex.label.cex = 0.3, edge.arrow.size=0.4)
+```
+```{r}
+# Check all the vertices
+V(g.trade)$name
+V(g.trade)$continent
+
+```
+
+
