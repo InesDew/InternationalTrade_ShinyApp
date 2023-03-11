@@ -15,6 +15,7 @@ library(shiny)          # Run once per session
 library(ggmap)
 library(leaflet)
 library(bslib)
+library(sf)
 
 # Load data from file comptab_2018-01-29 16_00_comma_separated.csv 
 dt.trade <- fread("cleaned_trade_data.csv") 
@@ -62,12 +63,61 @@ g1 <- graph.data.frame(dt.trade.country.year[, list(reporter_name, partner_name)
 
 plot(g1, vertex.size = 5, vertex.label = NA)
 
+E(g1)
+V(g1)
 
 #g2 <- graph.data.frame(dt.trade[, list(reporter_name, partner_name)], directed=FALSE)
-#summary(g) 
-#plot(g)
-```
 
+```
+```{r}
+library(igraph)
+library(leaflet)
+
+# Subset the data to the country and year of interest
+dt.trade.country <- dt.trade[reporter_name == "Afghanistan"]
+dt.trade.country.year <- dt.trade.country[year == 2018]
+
+# Set the vertices
+all.importers <- dt.trade.country.year[, list(name=unique(reporter_name), type=TRUE)]
+all.exporters <- dt.trade.country.year[, list(name=unique(partner_name), type=FALSE)]
+
+all.vertices <- rbind(all.importers, all.exporters)
+
+# Create the graph
+g1 <- graph.data.frame(dt.trade.country.year[, list(reporter_name, partner_name)],
+                       directed=TRUE, vertices=all.vertices)
+
+# Get the edge and vertex coordinates
+edges_df <- data.frame(get.edgelist(g1))
+
+
+vertices_df <- get.data.frame(g1, what = "vertices")
+# Get the vertex attributes
+#vertices_df <- as_data_frame(V(g1))
+vertices_df$long <- ifelse(V(g1)$type, vertices_df$reporter_long, vertices_df$partner_long)
+vertices_df$lat <- ifelse(V(g1)$type, vertices_df$reporter_lat, vertices_df$partner_lat)
+vertices_df <- vertices_df[, c("name", "long", "lat")]
+
+
+# Update the long and lat values based on the type attribute
+vertices_df$long <- ifelse(vertices_df$type, vertices_df$reporter_long, vertices_df$partner_long)
+vertices_df$lat <- ifelse(vertices_df$type, vertices_df$reporter_lat, vertices_df$partner_lat)
+
+# Select only the name, long, and lat columns
+vertices_df <- vertices_df[, c("name", "long", "lat")]
+
+
+
+
+# Create a leaflet map
+map <- leaflet(vertices_df) %>% addTiles() %>%
+  addPolylines(data=edges_df, lng1 = ~long.x, lat1 = ~lat.x, lng2 = ~long.y, lat2 = ~lat.y)
+
+# Show the map
+map
+
+
+```
 
 ```{r}
 #ONLY MAP, NO SHINY APP 
@@ -75,14 +125,18 @@ library(tidyverse)
 library(leaflet)
 library(leaflet.extras)
 
+dt.trade.country <- dt.trade[reporter_name == "Afghanistan"]
+dt.trade.country.year <- dt.trade.country[year == 2018]
+
+
 # Create edges from dt.trade
-edges <- dt.trade %>%
+edges <- dt.trade.country.year %>%
   select(reporter_name, partner_name) %>%
   distinct() %>%
   graph_from_data_frame(directed = FALSE)
 
 # Create nodes with latitude and longitude coordinates
-nodes <- dt.trade %>%
+nodes <- dt.trade.country.year %>%
   select(name = reporter_name, lon = reporter_long, lat = reporter_lat) %>%
   distinct() %>%
   bind_rows(dt.trade %>%
@@ -178,6 +232,8 @@ ui <- fluidPage(
 # Define server ----------------------------------------------------------------
 
 server <- function(input, output, session) {
+  
+
 
   output$plot <- renderPlot({
 
