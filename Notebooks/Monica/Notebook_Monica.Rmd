@@ -55,53 +55,6 @@ dt.country.coordinates <- dt.country.coordinates[, c("partner_name", "partner_la
 meta <- dt.country.coordinates %>% rename("name" = "partner_name", "lat" = "partner_lat", "lon" = "partner_long")
 ```
 
-```{r}
-
-#MAP NOT ON SHINY APP
-
-library(sp)
-library(igraph)
-library(leaflet)
-
-
-# Subset the data to the country and year of interest
-dt.trade.country <- dt.trade[reporter_name == "Germany"]
-dt.trade.country.year <- dt.trade.country[year == 2018]
-
-df <- data.frame("from" = dt.trade.country.year$reporter_name, 
-               "to"= dt.trade.country.year$partner_name)
-
-
-g <- graph.data.frame(df, directed=TRUE, vertices=meta)
-
-
-gg <- get.data.frame(g, "both")
-vert <- gg$vertices
-coordinates(vert) <- ~lon + lat
-
-edges <- gg$edges
-
-edges <- lapply(1:nrow(edges), function(i) {
-  as(rbind(vert[vert$name == edges[i, "from"], ], 
-           vert[vert$name == edges[i, "to"], ]), 
-     "SpatialLines")
-})
-
-
-for (i in seq_along(edges)) {
-  edges[[i]] <- spChFIDs(edges[[i]], as.character(i))
-}
-
-edges <- do.call(rbind, edges)
-
-
-library(leaflet)
-leaflet(vert) %>% addTiles() %>% addCircleMarkers(data = vert,radius = 2, 
-    color = "red", 
-    fillColor = "red", 
-    fillOpacity = 0.8,
-    stroke = FALSE) %>% addPolylines(data = edges, weight = 1, color = "blue")
-```
 
 
 ```{r}
@@ -228,7 +181,7 @@ ui <- fluidPage(
     # Output: Show network
     mainPanel(
 
-      plotOutput(outputId = "plot")
+      leafletOutput("map")
     )
   )
 )
@@ -240,7 +193,7 @@ server <- function(input, output, session) {
   
 
 
-  output$plot <- renderPlot({
+  output$map <- renderLeaflet({
 
     # Set the parameters
     if(input$trader=="Exports"){
@@ -281,7 +234,7 @@ server <- function(input, output, session) {
     edges_df <- data.frame(id = seq_along(edges), weight = weights)
     edges <- SpatialLinesDataFrame(edges, data = edges_df)
 
-
+    
     pal <- colorNumeric(palette = "YlOrRd", domain = c(min(edges_df$weight), max(edges_df$weight)))
 
     leaflet(vert) %>% 
@@ -293,7 +246,7 @@ server <- function(input, output, session) {
                        stroke = FALSE) %>% 
       addPolylines(data = edges, weight = 2, color = ~pal(weight)) %>% 
       addLegend(position = "bottomright", pal = pal, values = edges_df$weight, 
-                title = "Trade Value (USD)", labFormat = labelFormat(suffix = " USD", digits = 0))
+                title = "Trade Value (USD)", labFormat = labelFormat(suffix = " USD", digits = 0)) 
 
           })
 }
