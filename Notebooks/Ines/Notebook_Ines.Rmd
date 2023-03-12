@@ -40,7 +40,7 @@ plot(g, vertex.size = 5, vertex.label.cex = 0.6)
 
 ```{r}
 # 1. Make edge list
-dt.trade.year <- dt.trade[year == 2017]
+dt.trade.year <- dt.trade[(year == 2017)]
 dt.trade.year
 dt.trade.edgelist <- dt.trade.year[ , c('reporter_name', 'partner_name')]
 dt.trade.edgelist
@@ -52,10 +52,10 @@ m.trade <- as.matrix(dt.trade.edgelist)
 g.trade <- graph_from_edgelist(m.trade, directed=TRUE)
 
 
-# 3. Set the weight of the edges (trade_value_usd)
-edge.attributes(g.trade)$weight <- dt.trade.year$trade_value_usd
+# 3. Set the weight of the edges (trade_value_usd) & add the year as an attribute
+E(g.trade)$weight <- dt.trade.year$trade_value_usd
   # Sum the weights for duplicate edges (we would need this if we select multiple years)
-
+  g.trade <- simplify(g.trade, remove.multiple = TRUE, edge.attr.comb=list(weight="sum", year="concat"))
 
 # 4. Add attributes to the vertices (continent)
 library(rjson)
@@ -66,9 +66,9 @@ V(g.trade)$continent <-  unlist(json_data[V(g.trade)$name])
 plot(g.trade, vertex.size = 5, vertex.label.cex = 0.3, edge.arrow.size=0.4)
 ```
 ```{r}
-# Check all the vertices
-V(g.trade)$name
-V(g.trade)$continent
+# Check all the edges
+E(g.trade)
+E(g.trade)$weight
 
 ```
 
