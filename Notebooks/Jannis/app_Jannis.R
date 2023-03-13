@@ -5,7 +5,7 @@ library(leaflet)
 
 
 # Read the data
-dt.trade <- fread("../data/cleaned_trade_data.csv")
+dt.trade <- fread("../../data/cleaned_trade_data.csv")
 
 # Aggregate the data by year and  reporter_name to get the export value for each country
 dt.export <- dt.trade[, .(export_value_1000_usd = sum(trade_value_1000_usd), num_exporting_partners = .N, reporter_lat = unique(reporter_lat)
@@ -143,10 +143,8 @@ server <- function(input, output) {
     }
   })
 }
-  
+
 
 
 # Run the app
 shinyApp(ui, server)
-
-
