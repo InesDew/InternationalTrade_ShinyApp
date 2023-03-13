@@ -1,192 +1,223 @@
----
-title: "R Notebook"
-output: html_notebook
----
 ```{r}
-library(data.table)     # Run once per session
-library(ggplot2)        # Run once per session
-library(igraph)         # Run once per session
-library(bslib)
-library(leaflet)
 library(shiny)
-```
+library(data.table)
+library(ggplot2)
+library(igraph)
+library(DT)
+library(rjson)
+library(bslib)
 
-```{r}
+# Load data
 dt.trade <- fread("../../data/cleaned_trade_data.csv")
 
-# Save dt.movie.actor. Next time you can simply call the load function (below)
-save(dt.trade, file="trade.RData") 
-
-# Load previously saved dt.trade You can start in this line if you have previously saved these data.
-load("trade.RData") 
-
-dt.trade <- fread("../../data/cleaned_trade_data.csv")
-```
-
-Exploratory Data Analaysis and Data Cleaning 
-
-```{r}
-#how many rows does our data set contain 
-nrow(dt.trade)
-
-#what are the different columns in our data set
-colnames(dt.trade)
-
-#countrylist
-l.countries <- as.list(unique(dt.trade$reporter_name))
-l.continent <- as.list(unique(dt.trade$reporter_continent))
-
-```
-
-Network
-
-```{r}
-# Set the parameters
-dt.trade.country <- dt.trade[reporter_name == "Afghanistan"]
-
-dt.trade.country.year <- dt.trade.country[year == 2018]
-
-# Set the vertices
-all.importers <- dt.trade.country.year[, list(name=unique(reporter_name), type=TRUE)]
-all.exporters <- dt.trade.country.year[, list(name=unique(partner_name), type=FALSE)]
-
-all.vertices <- rbind(all.importers, all.exporters)
-
-# Create & plot the graph
-g1 <- graph.data.frame(dt.trade.country.year[, list(reporter_name, partner_name)],
-      directed=TRUE, vertices=all.vertices)
-
-plot(g1, vertex.size = 5, vertex.label = NA)
-
-#g2 <- graph.data.frame(dt.trade[, list(reporter_name, partner_name)], directed=FALSE)
-#summary(g) 
-#plot(g)
-```
-```{r}
-# Get number of nodes/vertices
-num_nodes <- vcount(g1)
-
-# Get number of edges
-num_edges <- ecount(g1)
-
-# Get degree of each vertex/country
-degrees <- degree(g1)
-
-# Calculate average and median degree, ignoring NA values
-avg_degree <- mean(degrees, na.rm = TRUE)
-med_degree <- median(degrees, na.rm = TRUE)
-
-
-# Get edge weights, ignoring NA values
-edge_weights <- E(g1)$trade_value_usd[!is.na(E(g1)$trade_value_usd)]
-
-# Calculate statistics on edge weights, ignoring NA values
-avg_weight <- mean(edge_weights, na.rm = TRUE)
-med_weight <- median(edge_weights, na.rm = TRUE)
-min_weight <- min(edge_weights, na.rm = TRUE)
-max_weight <- max(edge_weights, na.rm = TRUE)
-sd_weight <- sd(edge_weights, na.rm = TRUE)
-
-# Create data.table with results
-result_dt <- data.table(num_nodes = num_nodes,
-                        num_edges = num_edges,
-                        avg_degree = avg_degree,
-                        med_degree = med_degree,
-                        avg_weight_usd = avg_weight,
-                        med_weight_usd = med_weight,
-                        min_weight_usd = min_weight,
-                        max_weight_usd = max_weight,
-                        sd_weight_usd = sd_weight)
-
-print(result_dt)
-
-```
-
-```{r}
+# Define UI
 ui <- fluidPage(
-  
-  # App title ----
+  # App title
   titlePanel("Shiny App for International Trade"),
   
-  navbarPage(title = "Network Analytics",
-             theme = bs_theme(bg = "white",
-                              fg = "black",
-                              primary = "maroon",
-                              base_font = font_google("Montserrat")
-             )
-  ),
-  
-  sidebarLayout(
+  navbarPage(
+    title = "Network Analytics",
+    tabPanel("Descriptives",
+             sidebarLayout(
+               sidebarPanel(
+                 img(src = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/World_Trade_Organization_%28logo_and_wordmark%29.svg/2560px-World_Trade_Organization_%28logo_and_wordmark%29.svg.png", width = "100%"),
+                 selectInput(
+                   inputId = "desc_yearInput",
+                   label = "Year:",
+                   choices = c("", levels(as.factor(dt.trade$year))),
+                   selected = "2021",
+                   multiple = FALSE
+                 ),
+                 selectInput(
+                   inputId = "des_continentInput",
+                   label = "Select a continent:",
+                   choices = c(
+                     "Asia",
+                     "Europe",
+                     "Africa",
+                     "North America",
+                     "South America",
+                     "Australia"
+                   ),
+                   selected = c(
+                     "Asia",
+                     "Europe",
+                     "Africa",
+                     "North America",
+                     "South America",
+                     "Australia"
+                   ),
+                   multiple = TRUE
+                 ),
+                 
+                 actionButton("submit_desc", "Submit")
+               ),
+               mainPanel(
+                 plotOutput("network"),
+                 plotOutput(outputId = "kpi_chart"),
+                 DTOutput("kpis_table")
+                 # Add output tables and plots here
+               )
+             )),
+    tabPanel("Data",
+             sidebarLayout(
+               sidebarPanel(
+                 selectInput(
+                   inputId = "filter_reporter",
+                   label = "Reporter:",
+                   choices = c("", levels(as.factor(
+                     dt.trade$reporter_name
+                   ))),
+                   selected = "",
+                   multiple = FALSE
+                 ),
+                 selectInput(
+                   inputId = "filter_partner",
+                   label = "Partner:",
+                   choices = c("", levels(as.factor(
+                     dt.trade$partner_name
+                   ))),
+                   selected = "",
+                   multiple = FALSE
+                 ),
+                 selectInput(
+                   inputId = "filter_year",
+                   label = "Year:",
+                   choices = c("", levels(as.factor(dt.trade$year))),
+                   selected = "",
+                   multiple = FALSE
+                 ),
+               ),
+               mainPanel(DTOutput("data_table"))
+             )),
     
-    # Inputs: Select variables to plot
-    sidebarPanel(
-      
-      img(src = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/World_Trade_Organization_%28logo_and_wordmark%29.svg/2560px-World_Trade_Organization_%28logo_and_wordmark%29.svg.png",width="100%"),
-      
-      # Select Trade
-      selectInput(inputId = "trader", 
-                  label = "Select Imports or Exports:",
-                  choices = c("Exports"="reporter_name","Imports"="partner_name"), 
-                  selected = "reporter_name"),
-      
-      # Select continent
-      selectInput(inputId = "continent", 
-                  label = "Select Continent:",
-                  choices = l.continent, 
-                  selected = "Africa"),
-      
-      # Set year range
-      selectInput(inputId = "year",
-                  label = "Year:",
-                  choices = c(levels(as.factor(dt.trade$year))),
-                  selected = "2017",
-                  multiple = FALSE)
-    ),
-    
-    
-    # Output: Show network and map
-    mainPanel(
-      
-      # Show the map
-      leafletOutput(outputId = "map"),
-      
-      # Show the network
-      plotOutput(outputId = "plot")
+    theme = bs_theme(
+      bg = "white",
+      fg = "black",
+      primary = "maroon",
+      base_font = font_google("Montserrat")
     )
   )
 )
 
-```
-
-```{r}
-server <- function(input, output) {
+# Create graph from trade data
+create_trade_graph <- function(dt, year_input, continent_input) {
+  # Subset data to selected year
+  dt.year <- dt[year == year_input]
   
-  # Filter the data by the selected continent and year
-  filtered_data <- reactive({
-    dt.trade %>%
-      filter(reporter_continent == input$continent,
-             year == input$year)
-  })
+  # Get edge list
+  dt.edgelist <- dt.year[, c('reporter_name', 'partner_name')]
   
-  # Render the map
-  output$map <- renderLeaflet({
-    leaflet() %>%
-      addTiles() %>%
-      addMarkers(data = filtered_data(),
-                 lat = ~reporter.lat,
-                 lng = ~reporter.long,
-                 popup = ~reporter_name)
-  })
+  # Convert to igraph
+  m <- as.matrix(dt.edgelist)
+  g <- graph_from_edgelist(m, directed = TRUE)
   
-  # Render the network
-  output$plot <- renderPlot({
-    # Your code for plotting the network goes here
-  })
+  # Set edge weights
+  edge.attributes(g)$weight <- dt.year$trade_value_usd
   
+  # Set vertex attributes
+  json_data <- fromJSON(file = '../../data/sample.json')
+  V(g)$continent <- unlist(json_data[V(g)$name])
+  V(g)$continent[!V(g)$name %in% dt.year$reporter_name] <- NA
+  
+  # Filter vertices by continent
+  if (!is.null(continent_input)) {
+    g <- induced_subgraph(g, V(g)$continent %in% continent_input)
+  }
+  
+  g
 }
 
-```
+# Define server
+server <- function(input, output, session) {
+  # Data table output
+  output$data_table <- renderDT({
+    # Filter data
+    filtered_data <- dt.trade
+    if (input$filter_reporter != "") {
+      filtered_data <-
+        filtered_data[reporter_name %in% input$filter_reporter]
+    }
+    if (input$filter_partner != "") {
+      filtered_data <-
+        filtered_data[partner_name %in% input$filter_partner]
+    }
+    if (input$filter_year != "") {
+      filtered_data <- filtered_data[year == input$filter_year]
+    }
+    
+    datatable(
+      filtered_data[, c(
+        "reporter_name",
+        "partner_name",
+        "trade_value_usd",
+        "reporter_continent",
+        "partner_continent",
+        "year"
+      )],
+      filter = "top"
+    )
+  })
+  
+  # Histogram output
+  output$network <- renderPlot({
+    # Create trade graph
+    g <- create_trade_graph(dt.trade, input$desc_yearInput, input$des_continentInput)
+    
+    # Plot degree distribution
+    hist(
+      degree(g),
+      main = "Degree Distribution of selected Countries",
+      xlab = "Degree",
+      ylab = "Count",
+      col = "#48ADF0",
+      border = "black",
+      breaks = seq(0, max(degree(g)) + 1, by = 1)
+    )
+  })
+  
+  # KPI table output
+  output$kpis_table <- renderDT({
+    # Create trade graph
+    g <- create_trade_graph(dt.trade, input$desc_yearInput, input$des_continentInput)
+    
+    # Calculate KPIs and store in a data frame
+    kpi_df <- data.frame(
+      NumNodes = vcount(g),
+      NumEdges = ecount(g),
+      MeanDegree = mean(degree(g)),
+      MedianDegree = median(degree(g)),
+      AvgEdgeValueUSD = mean(E(g)$weight),
+      MedianEdgeValueUSD = median(E(g)$weight),
+      MinEdgeValueUSD = min(E(g)$weight),
+      MaxEdgeValueUSD = max(E(g)$weight),
+      StdDevEdgeValueUSD = sd(E(g)$weight)
+    )
+    
+    kpi_df
+  })
+  
+  # KPI chart output
+  output$kpi_chart <- renderPlot({
+    # Create trade graph
+    g <- create_trade_graph(dt.trade, input$desc_yearInput, input$des_continentInput)
+        # 6. Create a histogram of edge values
+    plot <- hist(
+      E(g)$weight,
+      main = "Edge Value Distribution",
+      xlab = "Trade Value (USD)",
+      ylab = "Count",
+      col = "#48ADF0",
+      border = "black",
+      breaks = seq(0, max(E(g)$weight) + 1e9, by = 1e9),
+      xlim = c(0, max(E(g)$weight))
+    )
+    
+    plot
+  })
+                              
+}
+# Create a Shiny app object
+shinyApp(ui = ui, server = server)
 
-```{r}
-shinyApp(ui, server)
 ```
