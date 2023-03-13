@@ -6,6 +6,7 @@ library(igraph)
 library(DT)
 library(rjson)
 library(bslib)
+library(leaflet)
 
 # Load data --------------------------------------------------------------------
 dt.trade <- fread("../data/cleaned_trade_data.csv")
@@ -48,20 +49,29 @@ ui <- fluidPage(
     tabPanel("Compare Countries",
              sidebarLayout(
                sidebarPanel(
-                 selectInput(
-                   inputId = "filter_reporter",
-                   label = "Reporter:",
-                   choices = c("", levels(as.factor(
-                     dt.trade$reporter_name
-                   ))),
-                   selected = "",
-                   multiple = FALSE
-                 ),
+                 selectInput("country", "Country:", choices = c("", sort(unique(dt.merged$reporter_name))), selected = NULL),
+                 selectInput("country2", "Country 2:", choices = c("", sort(unique(dt.merged$reporter_name))), selected = NULL),
+                 selectInput("country3", "Country 3:", choices = c("", sort(unique(dt.merged$reporter_name))), selected = NULL),
+                 selectInput("column", "KPI:", choices = c("Export Value" = "export_value_1000_usd",
+                                                           "Average Export Value per Partner" = "avg_export_value_1000_usd",
+                                                           "Import Value" = "import_value_1000_usd",
+                                                           "Number of Exporting Partners" = "num_exporting_partners",
+                                                           "Number of Importing Partners" = "num_importing_partners",
+                                                           "Average Import Value per Partner" = "avg_import_value_1000_usd",
+                                                           "Trade Balance" = "trade_balance")),
+                 sliderInput("year", "Year:", 
+                             min = min(dt.merged$year), 
+                             max = max(dt.merged$year), 
+                             value = c(min(dt.merged$year), max(dt.merged$year)), 
+                             step = 1,
+                             sep = "")
                ),
                mainPanel(
-                 # add output here
+                 leafletOutput("map"),
+                 plotOutput("plot")
                )
-             )),
+             )
+    ),
     tabPanel("Clusteranalyse",
              sidebarLayout(
                sidebarPanel(
@@ -251,8 +261,90 @@ server <- function(input, output, session) {
     
     plot
   })
+#_______________________________________________________________________-____
+  #Compare Countries
+  # Create a reactive data frame to filter the data based on the user inputs
+  filtered_data <- reactive({
+    dt.merged[reporter_name == input$country & year >= input$year[1] & year <= input$year[2]]
+  })
   
+  # Create reactive data frames for the second and third country selections
+  filtered_data2 <- reactive({
+    if (!is.null(input$country2)) {
+      dt.merged[reporter_name == input$country2 & year >= input$year[1] & year <= input$year[2]]
+    } else {
+      NULL
+    }
+  })
+  
+  filtered_data3 <- reactive({
+    if (!is.null(input$country3)) {
+      dt.merged[reporter_name == input$country3 & year >= input$year[1] & year <= input$year[2]]
+    } else {
+      NULL
+    }
+  })
+  
+  # Create the plot based on the filtered data
+  output$plot <- renderPlot({
+    if (!is.null(filtered_data2()) & !is.null(filtered_data3())) {
+      ggplot() +
+        geom_line(data = filtered_data(), aes_string(x = "year", y = input$column, color = "'Country 1'")) +
+        geom_line(data = filtered_data2(), aes_string(x = "year", y = input$column, color = "'Country 2'")) +
+        geom_line(data = filtered_data3(), aes_string(x = "year", y = input$column, color = "'Country 3'")) +
+        labs(x = "Year",
+             y = input$column) +
+        scale_color_manual(name = "Country", 
+                           values = c("Country 1" = "red", "Country 2" = "blue", "Country 3" = "green"),
+                           labels = c(input$country, input$country2, input$country3))
+    } else if (!is.null(filtered_data2())) {
+      ggplot() +
+        geom_line(data = filtered_data(), aes_string(x = "year", y = input$column, color = "'Country 1'")) +
+        geom_line(data = filtered_data2(), aes_string(x = "year", y = input$column, color = "'Country 2'")) +
+        labs(x = "Year",
+             y = input$column) +
+        scale_color_manual(name = "Country", values = c("Country 1" = "red", "Country 2" = "blue"),
+                           labels = c(input$country, input$country2))
+    } else {
+      ggplot(filtered_data(), aes_string(x = "year", y = input$column, color = "'Country 1'")) +
+        geom_line() +
+        labs(x = "Year",
+             y = input$column) +
+        scale_color_manual(name = "Country", 
+                           values = c("Country 1" = "red"),
+                           labels = c(input$country))
+    }
+  })
+  
+  # Create the map based on the filtered data
+  output$map <- renderLeaflet({
+    # Create a data frame with only the selected countries' coordinates
+    selected_countries <- unique(dt.merged[reporter_name %in% c(input$country, input$country2, input$country3),
+                                           c("reporter_name","reporter_lat", "reporter_long")])
+    # Create a leaflet map centered on the selected countries or the world
+    if (nrow(selected_countries) > 0) {
+      leaflet() %>%
+        addProviderTiles("Stamen.Toner", options = providerTileOptions(noWrap = TRUE, zoomSnap = 0, 
+                                                                       attributionControl = FALSE, 
+                                                                       backgroundColor = "#f2f2f2",opacity = 
+                                                                         0.4)) %>%
+        addCircleMarkers(data = selected_countries, lng = ~reporter_long, lat = ~reporter_lat, label = ~reporter_name, radius = 10,
+                         color = "red",
+                         fillColor = "red",
+                         fillOpacity = 0.8,
+                         stroke = FALSE)
+    } else {
+      leaflet() %>%
+        addProviderTiles("Stamen.Toner", options = providerTileOptions(noWrap = TRUE, zoomSnap = 0, 
+                                                                       attributionControl = FALSE, 
+                                                                       backgroundColor = "#f2f2f2",opacity = 
+                                                                         0.4)) %>%
+        setView(lng = 0, lat = 0, zoom = 2)
+    }
+  })
 }
+
+
 
 # Create a Shiny app object ----------------------------------------------------
 shinyApp(ui = ui, server = server)
