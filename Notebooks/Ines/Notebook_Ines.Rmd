@@ -40,7 +40,7 @@ plot(g, vertex.size = 5, vertex.label.cex = 0.6)
 
 ```{r}
 # 1. Make edge list
-dt.trade.year <- dt.trade[(year == 2017)]
+dt.trade.year <- dt.trade[year == 2021]
 dt.trade.year
 dt.trade.edgelist <- dt.trade.year[ , c('reporter_name', 'partner_name')]
 dt.trade.edgelist
@@ -66,9 +66,42 @@ V(g.trade)$continent <-  unlist(json_data[V(g.trade)$name])
 plot(g.trade, vertex.size = 5, vertex.label.cex = 0.3, edge.arrow.size=0.4)
 ```
 ```{r}
-# Check all the edges
-E(g.trade)
-E(g.trade)$weight
+# 6. Run community detection algorithms
+# Run Walktrap algorithm
+walktrap_communities <- walktrap.community(g.trade, weights = E(g.trade)$weight)
+# Print the number of communities detected
+cat("Number of communities detected by Walktrap algorithm: ", length(unique(walktrap_communities$membership)), "\n")
+# Plot the resulting clusters
+plot(g.trade, vertex.size = 5, vertex.label.cex = 0.3, edge.arrow.size=0.4, vertex.color = walktrap_communities$membership)
+
+#Modularity score: One way to evaluate the quality of the clustering is to calculate the modularity score, which measures the extent to which the nodes within a community are more densely connected to each other than to nodes outside the community. 
+modularity(walktrap_communities, g)
+
+# get the size of each community
+sizes(walktrap_communities)
+
+# Create a new graph object with community memberships as vertex attributes
+g_comm <- set_vertex_attr(g.trade, "community", value = walktrap_communities$membership)
+# Convert to igraph object
+g_comm <- graph_from_data_frame(get.edgelist(g_comm), directed = TRUE)
+# Compute edge betweenness for the entire graph
+eb <- igraph::edge.betweenness(g)
+# Find the top 10 edges with the highest edge betweenness
+top10_eb <- order(eb, decreasing = TRUE)[1:10]
+# Generate a vector of colors using the rainbow() function
+color_eb <- rainbow(length(E(g)))
+# Set the color of the top 10 edges with highest edge betweenness to red
+color_eb[top10_eb] <- "red"
+# Set the color of the remaining edges to transparent
+color_eb[-top10_eb] <- "transparent"
+
+plot(g.trade, vertex.size = 5, vertex.label.cex = 0.3, edge.arrow.size=0.4, vertex.color = walktrap_communities$membership, edge.color = color_eb)
+
+# get the average path length for each community
+apl_comm <- lapply(unique(walktrap_communities$membership), function(m) average.path.length(induced_subgraph(g.trade, V(g.trade)[walktrap_communities$membership == m])))
+apl_all <- average.path.length(g.trade)
+print(apl_all)
+print(apl_comm)
 
 ```
 
