@@ -175,7 +175,7 @@ ui <- fluidPage(
       # Set year range
       sliderInput(inputId = "year_range",
                   label = "Select Year Range:",
-                  min = 1995,
+                  min = 2000,
                   max = 2022,
                   value = c(2018, 2022),
                   step = 1)
@@ -264,7 +264,9 @@ server <- function(input, output, session) {
                    fillColor = "red",
                    fillOpacity = 0.8,
                    stroke = FALSE) %>%
-      addPolylines(data = edges, weight = 2, color = ~pal(weight))
+      addPolylines(data = edges, weight = 2, color = ~pal(weight)) %>%
+      addLegend(position = "bottomright", pal = pal, values = edges_df$weight, 
+                title = "Trade Value (USD)", labFormat = labelFormat(suffix = " USD", digits = 0)) 
 
 
 
