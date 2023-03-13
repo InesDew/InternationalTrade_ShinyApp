@@ -6,12 +6,14 @@ The first step is to load and prepare the trade data. This data set was extracte
 This data set contains records on every international import or export conducted with species from the CITES lists in 2016. It contains columns identifying the species, the import and export countries, and the amount and characteristics of the goods being traded (which range from live animals to skins and cadavers).
 
 ```{r   }
-library(data.table)     # Run once per session
-library(ggplot2)        # Run once per session
-library(dplyr)          # Run once per session
-library(igraph)         # Run once per session
-library(DT)             # Run once per session
-library(shiny)          # Run once per session
+
+#Loading required libraries 
+library(data.table)
+library(ggplot2)        
+library(dplyr)          
+library(igraph)         
+library(DT)             
+library(shiny)          
 library(ggmap)
 library(leaflet)
 library(bslib)
@@ -20,106 +22,29 @@ library(geosphere)
 library(RColorBrewer)
 library(sp)
 
-
-
-
-
-# Load data from file comptab_2018-01-29 16_00_comma_separated.csv 
+# Load data from file cleaned_trade_data.csv 
 dt.trade <- fread("../../data/cleaned_trade_data.csv") 
 
-
-# Save dt.movie.actor. Next time you can simply call the load function (below)
+# Save dt.trade 
 save(dt.trade, file="trade.RData") 
-
-
-# Load previously saved dt.trade You can start in this line if you have previously saved these data.
-load("trade.RData") 
 
 ```
 
-Exploratory Data Analaysis and Data Cleaning 
-
 ```{r}
-#how many rows does our data set contain 
-nrow(dt.trade)
 
-#what are the different columns in our data set
-colnames(dt.trade)
+#Loading previously saved dt.trade (possible to start in this line if data has been previously saved
+load("trade.RData") 
 
-#countrylist
+#Creating a list of unique countries SHOULD WE CHANGE THIS TO PARTNER NAME ?????????
 l.countries <- as.list(unique(dt.trade$reporter_name))
 
-
-dt.trade <- dt.trade[complete.cases(dt.trade), ]
-
-
+#Creating a data table with the unique names of countries
 dt.country.coordinates <- dt.trade %>% distinct(partner_name, .keep_all = TRUE)
+
+#Selecting only the columns of country name , longitude and latitude and renaming them columns for future plotting
 dt.country.coordinates <- dt.country.coordinates[, c("partner_name", "partner_lat", "partner_long")]
 meta <- dt.country.coordinates %>% rename("name" = "partner_name", "lat" = "partner_lat", "lon" = "partner_long")
 ```
-
-
-
-```{r}
-
-#WEIGHTED MAP NOT ON SHINY APP
-
-library(sp)
-library(igraph)
-library(leaflet)
-
-
-# Subset the data to the country and year of interest
-dt.trade.country <- dt.trade[reporter_name == "Germany"]
-dt.trade.country.year <- dt.trade.country[year == 2018]
-dt.trade.country.year <- dt.trade.country[trade_value_usd > 10000000000]
-
-df <- data.frame("from" = dt.trade.country.year$reporter_name, 
-               "to"= dt.trade.country.year$partner_name)
-
-g <- graph.data.frame(df, directed = TRUE, vertices = meta)
-g <- set_edge_attr(g, "weight", value= dt.trade.country.year$trade_value_usd)
-
-
-gg <- get.data.frame(g, "both")
-vert <- gg$vertices
-coordinates(vert) <- ~lon + lat
-
-edges <- gg$edges
-weights <- E(g)$weight
-
-edges <- lapply(1:nrow(edges), function(i) {
-  as(rbind(vert[vert$name == edges[i, "from"], ], 
-           vert[vert$name == edges[i, "to"], ]), 
-     "SpatialLines")
-})
-
-for (i in seq_along(edges)) {
-  edges[[i]] <- spChFIDs(edges[[i]], as.character(i))
-}
-
-edges <- do.call(rbind, edges)
-edges_df <- data.frame(id = seq_along(edges), weight = weights)
-edges <- SpatialLinesDataFrame(edges, data = edges_df)
-
-
-pal <- colorNumeric(palette = "YlOrRd", domain = c(min(edges_df$weight), max(edges_df$weight)))
-
-leaflet(vert) %>% 
-  addTiles() %>% 
-  addCircleMarkers(data = vert, radius = 2, 
-                   color = "red", 
-                   fillColor = "red", 
-                   fillOpacity = 0.8,
-                   stroke = FALSE) %>% 
-  addPolylines(data = edges, weight = 2, color = ~pal(weight)) %>% 
-  addLegend(position = "bottomright", pal = pal, values = edges_df$weight, 
-            title = "Trade Value (USD)", labFormat = labelFormat(suffix = " USD", digits = 0))
-
-
-```
-
-
 
 ````{r}
 
@@ -130,9 +55,10 @@ leaflet(vert) %>%
 
 ui <- fluidPage(
   
-      # App title ----
+  # App title ----
   titlePanel("Shiny App for International Trade"),
   
+  #Navigation Page to shift from pages 
   navbarPage(title = "Network Analytics",
            tabPanel(title = "Rankings"),
            tabPanel(title = "Descriptive"),
@@ -150,7 +76,10 @@ ui <- fluidPage(
     # Inputs: Select variables to plot
     sidebarPanel(
       
+      #Adding logo to sidebar
       img(src = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/World_Trade_Organization_%28logo_and_wordmark%29.svg/2560px-World_Trade_Organization_%28logo_and_wordmark%29.svg.png",width="100%"),
+      
+      #Introducing Inputs for the user to select type of trade, country, minimum trade value and years to plot 
       
       # Select Trade
       selectInput(inputId = "trader", 
@@ -170,7 +99,6 @@ ui <- fluidPage(
                 min = 0,
                 max = 20000000000,
                 value = 0),
-      
       
       # Set year range
       sliderInput(inputId = "year_range",
@@ -197,7 +125,8 @@ server <- function(input, output, session) {
 
   output$map <- renderLeaflet({
 
-    # Set the parameters
+    # Set the parameters of the inputs to select years, minimum trade, reporter and partner name
+    # This is done with an if statement depending if user selected Exports or Imports 
     if(input$trader=="reporter_name"){
       dt.trade.country <- dt.trade[ dt.trade$reporter_name == input$country, ]
       dt.trade.country.year <- dt.trade.country[dt.trade.country$year >= input$year_range[1] &
@@ -212,10 +141,11 @@ server <- function(input, output, session) {
 
     }
 
+    #creating dataframe from the data table and defining from and to parameters
     df <- data.frame("from" = dt.trade.country.year$reporter_name,
                      "to"= dt.trade.country.year$partner_name)
 
-    #checking if there is data from the inputs demanded my the user, if not, map shows a message saying         that no data is available
+    #checking if there is data from the inputs demanded my the user, if not, map shows a message saying that no data is available
 
     if (nrow(df) == 0) {
       popup <- paste0("No data available for selected country")
@@ -223,56 +153,78 @@ server <- function(input, output, session) {
              addPopups(lng = 0, lat = 0, popup = popup))
     }
 
+    # Creating graph with data frame where the vertices are the meta data table containing all the countries with their longitude and latitude as previously explained 
     g <- graph_from_data_frame(df, directed = TRUE, vertices = meta)
+    
+    # Setting weights as the trade value 
     g <- set_edge_attr(g, "weight", value = dt.trade.country.year$trade_value_usd)
 
     # Remove vertices with degree 0
     g <- delete.vertices(g, which(degree(g) == 0))
 
+    # Retrieving data frame form the graph to get the coordinates of the vertices by summing longitude and latitude
     gg <- get.data.frame(g, "both")
     vert <- gg$vertices
     coordinates(vert) <- ~lon + lat
 
+    # Creating spatial lines from the edges of the graph with the weight of the trade value as an attribute
+    
+    # Retrieving the edges of the graph as a data frame from the output of get.data.frame(g, "both").
     edges <- gg$edges
+    
+    # Retrieving the weights of the edges from the attribute named "weight" in the graph g.
     weights <- E(g)$weight
 
+    # Creating a list of SpatialLines objects from the vertices data frame vert using the edges data frame. For each row i in the edges data frame, it extracts the "from" and "to" vertex names, retrieves the corresponding rows from vert, creates a SpatialLines object from these vertices, and stores it in the list.
+    
     edges <- lapply(1:nrow(edges), function(i) {
       as(rbind(vert[vert$name == edges[i, "from"], ],
                vert[vert$name == edges[i, "to"], ]),
          "SpatialLines")
     })
 
+    #This loop assigns unique IDs to the SpatialLines objects in the list edges using the spChFIDs function. The new IDs are character strings generated from the index i.
+    
     for (i in seq_along(edges)) {
       edges[[i]] <- spChFIDs(edges[[i]], as.character(i))
     }
 
+    # Combining the SpatialLines objects in the list edges into a single object of class SpatialLines.
     edges <- do.call(rbind, edges)
+    
+    # Creating a data frame edges_df with two columns: "id" and "weight". The "id" column contains sequential integers, and the "weight" column contains the weights of the edges.
     edges_df <- data.frame(id = seq_along(edges), weight = weights)
+    
+    # Combining the SpatialLines object edges with the data frame edges_df to create a SpatialLinesDataFrame. The resulting object contains both the spatial information (the lines connecting the vertices) and the attribute information (the weights of the edges)
     edges <- SpatialLinesDataFrame(edges, data = edges_df)
 
-
+    #defining color palette for weights on the map used below
     pal <- colorNumeric(palette = "YlOrRd", domain = c(min(edges_df$weight), max(edges_df$weight)))
     
     
     leaflet(vert) %>%
+      
+      #Format of the map
       addProviderTiles("Stamen.Toner", options = providerTileOptions(noWrap = TRUE, zoomSnap = 0, 
                                                                      attributionControl = FALSE, 
                                                                      backgroundColor = "#f2f2f2",opacity = 
                                                                        0.4)) %>%
+      #Adding red circles on edges
       addCircleMarkers(data = vert, radius = 2,
                    color = "red",
                    fillColor = "red",
                    fillOpacity = 0.8,
                    stroke = FALSE) %>%
+      
+      #Adding lines connecting edges with a color scheme representing the different weights of the trades
       addPolylines(data = edges, weight = 2, color = ~pal(weight)) %>%
+      
+      #Adding legend for color of the lines representing the weights of exports and import's trade value
       addLegend(position = "bottomright", pal = pal, values = edges_df$weight, 
                 title = "Trade Value (USD)", labFormat = labelFormat(suffix = " USD", digits = 0)) 
 
-
-
           })
 }
-
 
 
 # Create a Shiny app object ----------------------------------------------------
