@@ -12,6 +12,32 @@ library(leaflet)
 dt.trade <- fread("../data/cleaned_trade_data.csv")
 json_data <- fromJSON(file = '../data/sample.json')
 
+#Prepare data for Compare Countries--------------------------------------------
+
+# Aggregate the data by year and  reporter_name to get the export value for each country
+dt.export <- dt.trade[, .(export_value_1000_usd = sum(trade_value_1000_usd), num_exporting_partners = .N, reporter_lat = unique(reporter_lat)
+                          ,reporter_long = unique(reporter_long)), by = c("year", "reporter_name")]
+
+# Calculate the average export value per country per year
+dt.export[, avg_export_value_1000_usd := export_value_1000_usd / num_exporting_partners]
+
+# Aggregate the data by year and partner_name to get the import value for each country
+dt.import <- dt.trade[, .(import_value_1000_usd = sum(trade_value_1000_usd), 
+                          num_importing_partners = .N), 
+                      by = c("year", "partner_name")]
+
+# Calculate the average import value per country per year
+dt.import[, avg_import_value_1000_usd := import_value_1000_usd / num_importing_partners]
+
+
+# Merge import and export datatable
+dt.merged <- merge(dt.export, dt.import, 
+                   by.x = c("reporter_name", "year"), 
+                   by.y = c("partner_name", "year"))
+
+# Calculate trade balance
+dt.merged$trade_balance <- dt.merged$export_value_1000_usd - dt.merged$import_value_1000_usd
+
 # Helper Functions -------------------------------------------------------------
 # Create graph from trade data
 create_trade_graph <- function(dt, year_input, continent_input) {
@@ -261,8 +287,9 @@ server <- function(input, output, session) {
     
     plot
   })
-#_______________________________________________________________________-____
-  #Compare Countries
+
+  #Compare Countries------------------------------------------------------------
+  
   # Create a reactive data frame to filter the data based on the user inputs
   filtered_data <- reactive({
     dt.merged[reporter_name == input$country & year >= input$year[1] & year <= input$year[2]]
