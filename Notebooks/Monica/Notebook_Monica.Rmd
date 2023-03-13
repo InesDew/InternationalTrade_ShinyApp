@@ -18,6 +18,9 @@ library(bslib)
 library(sf)
 library(geosphere)
 library(RColorBrewer)
+library(sp)
+
+
 
 
 
@@ -118,11 +121,10 @@ leaflet(vert) %>%
 
 
 
+````{r}
 
+#SHINY APP WITH MAP
 
-
-```{r}
-#SHINY APP WITH MAP 
 
 # Define UI --------------------------------------------------------------------
 
@@ -162,19 +164,21 @@ ui <- fluidPage(
                   choices = l.countries, 
                   selected = "Hungary"),
       
+      # Select minimum weight
+      sliderInput(inputId = "MinWeight",
+                label = "Minimum Trade Value (USD):",
+                min = 0,
+                max = 20000000000,
+                value = 0),
       
-      # Select variable for color
-      #selectInput(inputId = "___", 
-      #            label = "____",
-      #            choices = c(),
-      #            selected = "___"),
       
       # Set year range
-      selectInput(inputId = "year",
-                  label = "Year:",
-                  choices = c(levels(as.factor(dt.trade$year))),
-                  selected = "2018",
-                  multiple = FALSE)
+      sliderInput(inputId = "year_range",
+                  label = "Select Year Range:",
+                  min = 1995,
+                  max = 2022,
+                  value = c(2018, 2022),
+                  step = 1)
     ),
     
     
@@ -190,28 +194,40 @@ ui <- fluidPage(
 # Define server ----------------------------------------------------------------
 
 server <- function(input, output, session) {
-  
-
 
   output$map <- renderLeaflet({
 
     # Set the parameters
-    if(input$trader=="Exports"){
+    if(input$trader=="reporter_name"){
       dt.trade.country <- dt.trade[ dt.trade$reporter_name == input$country, ]
-      dt.trade.country.year <- dt.trade.country[dt.trade.country$year == input$year, ]
+      dt.trade.country.year <- dt.trade.country[dt.trade.country$year >= input$year_range[1] &
+                                            dt.trade.country$year <= input$year_range[2], ]
+      dt.trade.country.year <- dt.trade.country.year[dt.trade.country.year$trade_value_usd >                                                      input$MinWeight, ]
+
     } else {
       dt.trade.country <- dt.trade[ dt.trade$partner_name == input$country, ]
-      dt.trade.country.year <- dt.trade.country[dt.trade.country$year == input$year, ] 
-    }       
+      dt.trade.country.year <- dt.trade.country[dt.trade.country$year >= input$year_range[1] &
+                                            dt.trade.country$year <= input$year_range[2], ]
+      dt.trade.country.year <- dt.trade.country.year[dt.trade.country.year$trade_value_usd >                                                      input$MinWeight, ]
 
+    }
 
+    df <- data.frame("from" = dt.trade.country.year$reporter_name,
+                     "to"= dt.trade.country.year$partner_name)
 
-    df <- data.frame("from" = dt.trade.country.year$reporter_name, 
-               "to"= dt.trade.country.year$partner_name)
+    #checking if there is data from the inputs demanded my the user, if not, map shows a message saying         that no data is available
 
-    g <- graph.data.frame(df, directed = TRUE, vertices = meta)
-    g <- set_edge_attr(g, "weight", value= dt.trade.country.year$trade_value_usd)
+    if (nrow(df) == 0) {
+      popup <- paste0("No data available for selected country")
+      return(leaflet() %>% addTiles() %>% setView(lng = 0, lat = 0, zoom = 2) %>%
+             addPopups(lng = 0, lat = 0, popup = popup))
+    }
 
+    g <- graph_from_data_frame(df, directed = TRUE, vertices = meta)
+    g <- set_edge_attr(g, "weight", value = dt.trade.country.year$trade_value_usd)
+
+    # Remove vertices with degree 0
+    g <- delete.vertices(g, which(degree(g) == 0))
 
     gg <- get.data.frame(g, "both")
     vert <- gg$vertices
@@ -221,8 +237,8 @@ server <- function(input, output, session) {
     weights <- E(g)$weight
 
     edges <- lapply(1:nrow(edges), function(i) {
-      as(rbind(vert[vert$name == edges[i, "from"], ], 
-               vert[vert$name == edges[i, "to"], ]), 
+      as(rbind(vert[vert$name == edges[i, "from"], ],
+               vert[vert$name == edges[i, "to"], ]),
          "SpatialLines")
     })
 
@@ -234,19 +250,23 @@ server <- function(input, output, session) {
     edges_df <- data.frame(id = seq_along(edges), weight = weights)
     edges <- SpatialLinesDataFrame(edges, data = edges_df)
 
-    
-    pal <- colorNumeric(palette = "YlOrRd", domain = c(min(edges_df$weight), max(edges_df$weight)))
 
-    leaflet(vert) %>% 
-      addTiles() %>% 
-      addCircleMarkers(data = vert, radius = 2, 
-                       color = "red", 
-                       fillColor = "red", 
-                       fillOpacity = 0.8,
-                       stroke = FALSE) %>% 
-      addPolylines(data = edges, weight = 2, color = ~pal(weight)) %>% 
-      addLegend(position = "bottomright", pal = pal, values = edges_df$weight, 
-                title = "Trade Value (USD)", labFormat = labelFormat(suffix = " USD", digits = 0)) 
+    pal <- colorNumeric(palette = "YlOrRd", domain = c(min(edges_df$weight), max(edges_df$weight)))
+    
+    
+    leaflet(vert) %>%
+      addProviderTiles("Stamen.Toner", options = providerTileOptions(noWrap = TRUE, zoomSnap = 0, 
+                                                                     attributionControl = FALSE, 
+                                                                     backgroundColor = "#f2f2f2",opacity = 
+                                                                       0.4)) %>%
+      addCircleMarkers(data = vert, radius = 2,
+                   color = "red",
+                   fillColor = "red",
+                   fillOpacity = 0.8,
+                   stroke = FALSE) %>%
+      addPolylines(data = edges, weight = 2, color = ~pal(weight))
+
+
 
           })
 }
