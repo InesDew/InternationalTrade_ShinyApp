@@ -146,47 +146,54 @@ ui <- fluidPage(
                    ),
                    multiple = TRUE
                  ),
-                 
-                 actionButton("submit_desc", "Submit")
+                 DTOutput("kpis_table")
                ),
                mainPanel(
                  plotOutput("degreeDist"),
                  plotOutput(outputId = "kpi_chart"),
-                 DTOutput("kpis_table")
-                 # Add output tables and plots here
                )
              )),
     tabPanel("Data",
-             sidebarLayout(
-               sidebarPanel(
-                 selectInput(
-                   inputId = "filter_reporter",
-                   label = "Reporter:",
-                   choices = c("", levels(as.factor(
-                     dt.trade$reporter_name
-                   ))),
-                   selected = "",
-                   multiple = FALSE
+               fluidRow(
+                 column(
+                  width = 3,
+                 img(src = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/World_Trade_Organization_%28logo_and_wordmark%29.svg/2560px-World_Trade_Organization_%28logo_and_wordmark%29.svg.png", width = "100%"),
                  ),
-                 selectInput(
-                   inputId = "filter_partner",
-                   label = "Partner:",
-                   choices = c("", levels(as.factor(
-                     dt.trade$partner_name
-                   ))),
-                   selected = "",
-                   multiple = FALSE
+                 column(
+                   width = 3,
+                   selectInput(
+                     inputId = "filter_partner",
+                     label = "Partner:",
+                     choices = c("", levels(as.factor(dt.trade$partner_name))),
+                     selected = "",
+                     multiple = FALSE
+                   )
                  ),
-                 selectInput(
-                   inputId = "filter_year",
-                   label = "Year:",
-                   choices = c("", levels(as.factor(dt.trade$year))),
-                   selected = "",
-                   multiple = FALSE
+                 column(
+                   width = 3,
+                   selectInput(
+                     inputId = "filter_reporter",
+                     label = "Reporter:",
+                     choices = c("", levels(as.factor(dt.trade$reporter_name))),
+                     selected = "",
+                     multiple = FALSE
+                   )
                  ),
+                 column(
+                   width = 3,
+                   selectInput(
+                     inputId = "filter_year",
+                     label = "Year:",
+                     choices = c("", levels(as.factor(dt.trade$year))),
+                     selected = "",
+                     multiple = FALSE
+                   )
                ),
-               mainPanel(DTOutput("data_table"))
-             )),
+               style = "margin-bottom: 10px;",
+             ),
+               DTOutput("data_table",width = "100%")
+    ),
+    
     
     theme = bs_theme(
       bg = "white",
@@ -203,28 +210,32 @@ server <- function(input, output, session) {
   output$data_table <- renderDT({
     # Filter data
     filtered_data <- dt.trade
-    if (input$filter_reporter != "") {
-      filtered_data <-
-        filtered_data[reporter_name %in% input$filter_reporter]
-    }
+
     if (input$filter_partner != "") {
       filtered_data <-
-        filtered_data[partner_name %in% input$filter_partner]
+        filtered_data[filtered_data$partner_name %in% input$filter_partner, ]
+    }
+    if (input$filter_reporter != "") {
+      filtered_data <-
+        filtered_data[filtered_data$reporter_name %in% input$filter_reporter, ]
     }
     if (input$filter_year != "") {
-      filtered_data <- filtered_data[year == input$filter_year]
+      filtered_data <- filtered_data[filtered_data$year == input$filter_year, ]
     }
     
     datatable(
       filtered_data[, c(
-        "reporter_name",
         "partner_name",
+        "reporter_name",
         "trade_value_usd",
-        "reporter_continent",
         "partner_continent",
+        "reporter_continent",
         "year"
       )],
-      filter = "top"
+      filter = "top",
+      width = "100%",
+      options = list(pageLength = 10, scrollX = TRUE),
+      class = 'cell-border stripe',
     )
   })
   
