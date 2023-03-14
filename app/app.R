@@ -389,33 +389,22 @@ server <- function(input, output, session) {
   #Centrality Table Output
   output$datamap <- renderDT({
     
-    if(input$trader=="reporter_name"){
-      dt.trade.country <- dt.trade[ dt.trade$reporter_name == input$countrymap, ]
-      dt.trade.country.year <- dt.trade.country[dt.trade.country$year >= input$year_range[1] &
-                                                  dt.trade.country$year <= input$year_range[2], ]
-      dt.trade.country.year <- dt.trade.country.year[dt.trade.country.year$trade_value_usd >                                                      input$MinWeight, ]
-      
-    } else {
-      dt.trade.country <- dt.trade[ dt.trade$partner_name == input$countrymap, ]
-      dt.trade.country.year <- dt.trade.country[dt.trade.country$year >= input$year_range[1] &
-                                                  dt.trade.country$year <= input$year_range[2], ]
-      dt.trade.country.year <- dt.trade.country.year[dt.trade.country.year$trade_value_usd >                                                      input$MinWeight, ]
-      
-    }
-    # Set the vertices
-    dt.all.reporters <- dt.trade.country.year[, list(name=unique(reporter_name), type=FALSE)]
-    dt.all.partners <- dt.trade.country.year[, list(name=unique(partner_name), type=TRUE)]
+    dt.trade.year <- dt.trade[dt.trade$year >= input$year_range[1] & dt.trade$year <= input$year_range[2], ]
+    dt.trade.edgelist <- dt.trade.year[ , c('reporter_name', 'partner_name')]
+    dt.trade.edgelist
     
-    dt.all.vertices <- rbind(dt.all.reporters, dt.all.partners)
     
-    # Create & plot the graph
-    g <- graph.data.frame(dt.trade.country.year[, list(reporter_name, partner_name)], directed=TRUE,
-                          vertices=dt.all.vertices)
+    # 2. Convert edge list to an igraph network
+    # igraph wants our data in matrix format
+    m.trade <- as.matrix(dt.trade.edgelist) 
+    g.trade <- graph_from_edgelist(m.trade, directed=TRUE)
     
-    # Setting weights as the trade value 
-    g <- set_edge_attr(g, "weight", value = dt.trade.country.year$trade_value_usd)
     
-    g.subgraph <- subgraph.edges(g, which(V(g)$name == input$countrymap))
+    # 3. Set the weight of the edges (trade_value_usd) & add the year as an attribute
+    E(g.trade)$weight <- dt.trade.year$trade_value_usd
+    # Sum the weights for duplicate edges (we would need this if we select multiple years)
+    g <- simplify(g.trade, remove.multiple = TRUE, edge.attr.comb=list(weight="sum", year="concat"))
+    
     
     # Extract the corresponding row from the data frame
     
@@ -423,8 +412,8 @@ server <- function(input, output, session) {
       DegreeCentrality = degree(g, v= input$countrymap),
       ClosenessCentrality = closeness(g, v= input$countrymap),
       BetweennessCentrality = betweenness(g, v= input$countrymap),
-      EigenvectorCentrality = eigen_centrality(g.subgraph)$vector[input$countrymap],
-      ClusteringCoefficient =transitivity(g, v= input$countrymap)
+      EigenvectorCentrality = round(eigen_centrality(g)$vector[input$countrymap],4),
+      ClusteringCoefficient = round(transitivity(g, v= input$countrymap),4)
     )
     
     names(df.map) <- c("Degree Centrality", "Closeness Centrality","Betweenness Centrality", "Eigenvector Centrality", "Clustering Coefficient")
