@@ -65,14 +65,16 @@ V(g.trade)$continent <-  unlist(json_data[V(g.trade)$name])
 # 5. Plot igraph
 plot(g.trade, vertex.size = 5, vertex.label.cex = 0.3, edge.arrow.size=0.4)
 ```
+
+
 ```{r}
-# 6. Run community detection algorithms
+# 6. Community detection algorithms
 # Run Walktrap algorithm
 walktrap_communities <- walktrap.community(g.trade, weights = E(g.trade)$weight)
 # Print the number of communities detected
 cat("Number of communities detected by Walktrap algorithm: ", length(unique(walktrap_communities$membership)), "\n")
 # Plot the resulting clusters
-plot(g.trade, vertex.size = 5, vertex.label.cex = 0.3, edge.arrow.size=0.4, vertex.color = walktrap_communities$membership)
+plot(walktrap_communities, g.trade, vertex.size = 5, vertex.label.cex = 0.3, edge.arrow.size=0.4, vertex.color = walktrap_communities$membership)
 
 #Modularity score: One way to evaluate the quality of the clustering is to calculate the modularity score, which measures the extent to which the nodes within a community are more densely connected to each other than to nodes outside the community. 
 modularity(walktrap_communities, g)
@@ -95,14 +97,515 @@ color_eb[top10_eb] <- "red"
 # Set the color of the remaining edges to transparent
 color_eb[-top10_eb] <- "transparent"
 
-plot(g.trade, vertex.size = 5, vertex.label.cex = 0.3, edge.arrow.size=0.4, vertex.color = walktrap_communities$membership, edge.color = color_eb)
-
 # get the average path length for each community
 apl_comm <- lapply(unique(walktrap_communities$membership), function(m) average.path.length(induced_subgraph(g.trade, V(g.trade)[walktrap_communities$membership == m])))
 apl_all <- average.path.length(g.trade)
 print(apl_all)
 print(apl_comm)
 
+plot(g.trade, vertex.size = 5, vertex.label.cex = 0.3, edge.arrow.size=0.4, vertex.color = walktrap_communities$membership, edge.color = color_eb)
+
 ```
+
+
+```{r}
+# SHINY WITHOUT WEIGTH MIN AND WITHOUT MAP
+
+library(data.table)
+library(ggplot2)
+library(igraph)
+library(shiny)
+
+
+# Load data from file comptab_2018-01-29 16_00_comma_separated.csv 
+dt.trade <- fread("../../data/cleaned_trade_data.csv") 
+
+# Define UI --------------------------------------------------------------------
+
+ui <- fluidPage(
+  
+  # App title ----
+  titlePanel("Shiny App for International Trade"),
+  
+  sidebarLayout(
+    
+    # Inputs: Select variables to plot
+    sidebarPanel(
+      
+      # Set year range
+      selectInput(inputId = "year",
+                  label = "Select Year Range:",
+                  choices = c('', levels(as.factor(dt.trade$year))),
+                  selected = '2021',
+                  multiple = FALSE)
+    ),
+    
+    
+    # Output: Show network
+    mainPanel(
+      plotOutput("cluster"),
+      htmlOutput("text")
+    )
+  )
+)
+
+
+# Define server ----------------------------------------------------------------
+
+server <- function(input, output, session) {
+  
+  output$cluster <- renderPlot({
+    
+    # 1. Make edge list
+    dt.trade.year <- dt.trade[dt.trade$year == input$year, ]
+    dt.trade.edgelist <- dt.trade.year[ , c('reporter_name', 'partner_name')]
+    
+    # 2. Convert edge list to an igraph network
+    # igraph wants our data in matrix format
+    m.trade <- as.matrix(dt.trade.edgelist) 
+    g.trade <- graph_from_edgelist(m.trade, directed=TRUE)
+    
+    # 3. Set the weight of the edges (trade_value_usd) & add the year as an attribute
+    E(g.trade)$weight <- dt.trade.year$trade_value_usd
+    
+    # 4. Community detection algorithms
+    # Run Walktrap algorithm
+    walktrap_communities <- walktrap.community(g.trade, weights = E(g.trade)$weight)
+    
+    # Create a new graph object with community memberships as vertex attributes
+    g_comm <- set_vertex_attr(g.trade, "community", value = walktrap_communities$membership)
+    # Convert to igraph object
+    g_comm <- graph_from_data_frame(get.edgelist(g_comm), directed = TRUE)
+    # Compute edge betweenness for the entire graph
+    eb <- igraph::edge.betweenness(g_comm)
+    # Find the top 10 edges with the highest edge betweenness
+    top10_eb <- order(eb, decreasing = TRUE)[1:10]
+    # Generate a vector of colors using the rainbow() function
+    color_eb <- rainbow(length(E(g_comm)))
+    # Set the color of the top 10 edges with highest edge betweenness to red
+    color_eb[top10_eb] <- "red"
+    # Set the color of the remaining edges to transparent
+    color_eb[-top10_eb] <- "transparent"
+    
+    plot(walktrap_communities, g.trade, vertex.size = 5, vertex.label.cex = 0.3, edge.arrow.size=0.4, vertex.color = walktrap_communities$membership, edge.color = color_eb)
+    
+  })
+  
+  output$text <- renderUI({
+    # 1. Make edge list
+    dt.trade.year <- dt.trade[dt.trade$year == input$year, ]
+    dt.trade.edgelist <- dt.trade.year[ , c('reporter_name', 'partner_name')]
+    
+    # 2. Convert edge list to an igraph network
+    # igraph wants our data in matrix format
+    m.trade <- as.matrix(dt.trade.edgelist) 
+    g.trade <- graph_from_edgelist(m.trade, directed=TRUE)
+    
+    # 3. Set the weight of the edges (trade_value_usd) & add the year as an attribute
+    E(g.trade)$weight <- dt.trade.year$trade_value_usd
+    
+    # 6. Community detection algorithms
+    # Run Walktrap algorithm
+    walktrap_communities <- walktrap.community(g.trade, weights = E(g.trade)$weight)
+    
+    # get the average path length for each community
+    apl_comm <- lapply(unique(walktrap_communities$membership), function(m) average.path.length(induced_subgraph(g.trade, V(g.trade)[walktrap_communities$membership == m])))
+    apl_all <- average.path.length(g.trade)
+    
+    HTML(paste("Number of communities detected by Walktrap algorithm: ", length(unique(walktrap_communities$membership)), "<br>",
+             "Modularity score of Walktrap algorithm: ", modularity(walktrap_communities, g), "<br>",
+             "Sizes of the communities: ", paste(unname(sizes(walktrap_communities)), collapse = ", "), "<br>",
+             " ", "<br>",
+             "Average path length of the total trade network: ", apl_all, "<br>",
+             "Average path length of the communities: ", paste(unname(apl_comm), collapse = ", "), "<br>"))
+  })
+}
+
+# Create a Shiny app object ----------------------------------------------------
+
+shinyApp(ui = ui, server = server)
+```
+
+
+```{r}
+# SHINY WITH WEIGHT MIN AND MAP
+library(data.table)
+library(ggplot2)
+library(scales)
+library(igraph)
+library(shiny)
+library(shinyWidgets)
+library(DT)             
+library(shiny)         
+library(ggmap)
+library(leaflet)
+library(bslib)
+library(sf)
+library(geosphere)
+library(RColorBrewer)
+library(sp)
+library(dplyr)
+library(remotes)
+library(magrittr)
+library(devtools)
+
+dt.trade <- fread("../../data/cleaned_trade_data.csv")
+
+# Define UI --------------------------------------------------------------------
+
+ui <- fluidPage(
+  
+  # App title ----
+  titlePanel("Shiny App for International Trade"),
+  
+  sidebarLayout(
+    
+    # Inputs: Select variables to plot
+    sidebarPanel(
+      
+      # Set year range
+      selectInput(inputId = "year",
+                  label = "Select Year Range:",
+                  choices = c('', levels(as.factor(dt.trade$year))),
+                  selected = '2021',
+                  multiple = FALSE),
+      sliderInput(inputId = "weight",
+                  label = "Select Minimum Trade Value in USD",
+                  max = 20000000,
+                  min = 0,
+                  value = 0,
+                  step = 1),
+      htmlOutput("textkpi")
+    ),
+    
+    # Output: Show network
+    mainPanel(
+      tabsetPanel(
+        tabPanel("Worldmap Plot",
+                 leafletOutput("map"),
+                 htmlOutput("textstat")
+                  ),
+        tabPanel("Network plot", plotOutput("cluster")))
+      )
+    )
+  )
+
+
+# Define server ----------------------------------------------------------------
+
+server <- function(input, output, session) {
+  
+  # Load data from file 
+  dt.trade <- fread("../../data/cleaned_trade_data.csv") 
+  
+  output$map <- renderLeaflet({
+    # 1. Make edge list
+    dt.trade.year <- dt.trade[dt.trade$year == input$year, ]
+    dt.trade.year <- dt.trade.year[dt.trade.year$trade_value_usd > input$weight, ]
+    dt.trade.edgelist <- dt.trade.year[ , c('reporter_name', 'partner_name')]
+    
+    # 2. Convert edge list to an igraph network
+    # igraph wants our data in matrix format
+    m.trade <- as.matrix(dt.trade.edgelist) 
+    g.trade <- graph_from_edgelist(m.trade, directed=TRUE)
+    
+    # 3. Set vertex attributes using set_vertex_attr()
+    l.reporters <- as.list(unique(dt.trade.year$reporter_name))
+    l.partners <- as.list(unique(dt.trade.year$partner_name))
+    l.countries <- as.list(unique(append(l.reporters, l.partners)))
+    dt.country.coordinates <- dt.trade.year %>% distinct(partner_name, .keep_all = TRUE)
+    dt.country.coordinates <- dt.country.coordinates[, c("partner_name", "partner_lat", "partner_long")]
+    meta <- dt.country.coordinates %>% rename("name" = "partner_name", "lat" = "partner_lat", "lon" = "partner_long")
+
+    meta <- meta[match(V(g.trade)$name, meta$name), ]
+    V(g.trade)$lat <- meta$lat
+    V(g.trade)$lon <- meta$lon
+    
+    # 4. Set the weight of the edges (trade_value_usd) & add the year as an attribute
+    E(g.trade)$weight <- dt.trade.year$trade_value_usd
+    # Remove vertices with degree 0
+    g.trade <- delete.vertices(g.trade, which(degree(g.trade) == 0))
+    
+    # 5. Community detection: Walktrap algorithm
+    walktrap_communities <- walktrap.community(g.trade, weights = E(g.trade)$weight)
+    # Get the community membership vector
+    membership_vec <- membership(walktrap_communities)
+    # Add the community as an attribute to the vectors
+    V(g.trade)$community <- membership_vec[V(g.trade)$name]
+    
+    # Create a new graph object with community memberships as vertex attributes
+    g_comm <- set_vertex_attr(g.trade, "community", value = walktrap_communities$membership)
+    # Convert to igraph object
+    g_comm <- graph_from_data_frame(get.edgelist(g_comm), directed = TRUE)
+    # Compute edge betweenness for the entire graph
+    eb <- igraph::edge.betweenness(g_comm)
+    # Find the top 10 edges with the highest edge betweenness
+    top10_eb <- order(eb, decreasing = TRUE)[1:10]
+    # Generate a vector of colors using the rainbow() function
+    color_eb <- rainbow(length(E(g_comm)))
+    # Set the color of the top 10 edges with highest edge betweenness to red
+    color_eb[top10_eb] <- "#000000"
+    # Set the color of the remaining edges to transparent
+    color_eb[-top10_eb] <- "transparent"
+    
+    # extract the vertices and edges from the g graph object and store them as a data frame
+    gg <- get.data.frame(g.trade, "both")
+    # assign vert variable with dataframe info on the vertices + add the spatial coordinates of the points to vert
+    vert <- gg$vertices
+    coordinates(vert) <- ~lon + lat
+    
+    # assign edges and weights variable
+    edges <- gg$edges
+    weights <- E(g.trade)$weight
+    
+    # Create a list of spatial objects
+    edges <- lapply(1:nrow(edges), function(i) 
+      {as(rbind(vert[vert$name == edges[i, "from"], ], 
+                vert[vert$name == edges[i, "to"], ]), 
+          "SpatialLines")
+      })
+    
+    # assign unique IDs to each of the SpatialLines objects
+    for (i in seq_along(edges)) {
+      edges[[i]] <- spChFIDs(edges[[i]], as.character(i))
+    }
+    
+    # combine all of the SpatialLines objects + new SpatialLinesDataFrame object using the combined SpatialLines object and the edges_df data frame.
+    edges <- do.call(rbind, edges)
+    edges_df <- data.frame(id = seq_along(edges), weight = weights)
+    edges <- SpatialLinesDataFrame(edges, data = edges_df)
+    
+    # plot map
+    community_colors <- hue_pal()(length(unique(vert$community)))
+    
+    leaflet(vert) %>% 
+      addProviderTiles("Stamen.Toner", options = 
+                         providerTileOptions(backgroundColor = "#f2f2f2",
+                                             opacity = 0.4)) %>% 
+      addCircleMarkers(data = vert, radius = 4, 
+                   color = community_colors[vert$community], 
+                   fillColor = community_colors[vert$community], 
+                   fillOpacity = 0.8,
+                   stroke = FALSE) %>% 
+      addPolylines(data = edges, weight = 2, color = ~color_eb)
+  })
+  
+  output$cluster <- renderPlot({
+    # 1. Make edge list
+    dt.trade.year <- dt.trade[dt.trade$year == input$year, ]
+    dt.trade.year <- dt.trade.year[dt.trade.year$trade_value_usd > input$weight, ]
+    dt.trade.edgelist <- dt.trade.year[ , c('reporter_name', 'partner_name')]
+    
+    # 2. Convert edge list to an igraph network
+    # igraph wants our data in matrix format
+    m.trade <- as.matrix(dt.trade.edgelist) 
+    g.trade <- graph_from_edgelist(m.trade, directed=TRUE)
+    
+    # 3. Set vertex attributes using set_vertex_attr()
+    l.countries <- as.list(unique(dt.trade.year$reporter_name))
+    dt.country.coordinates <- dt.trade.year %>% distinct(partner_name, .keep_all = TRUE)
+    dt.country.coordinates <- dt.country.coordinates[, c("partner_name", "partner_lat", "partner_long")]
+    meta <- dt.country.coordinates %>% rename("name" = "partner_name", "lat" = "partner_lat", "lon" = "partner_long")
+
+    vertex_attrs <- as.list(meta[, -1]) # exclude the 'name' column
+    V(g.trade)$lat <- vertex_attrs$lat
+    V(g.trade)$lon <- vertex_attrs$lon
+    
+    # 4. Set the weight of the edges (trade_value_usd) & add the year as an attribute
+    E(g.trade)$weight <- dt.trade.year$trade_value_usd
+    # Remove vertices with degree 0
+    g.trade <- delete.vertices(g.trade, which(degree(g.trade) == 0))
+    
+    # 5. Community detection algorithms
+    # Run Walktrap algorithm
+    walktrap_communities <- walktrap.community(g.trade, weights = E(g.trade)$weight)
+    
+    # Create a new graph object with community memberships as vertex attributes
+    g_comm <- set_vertex_attr(g.trade, "community", value = walktrap_communities$membership)
+    # Convert to igraph object
+    g_comm <- graph_from_data_frame(get.edgelist(g_comm), directed = TRUE)
+    # Compute edge betweenness for the entire graph
+    eb <- igraph::edge.betweenness(g_comm)
+    # Find the top 10 edges with the highest edge betweenness
+    top10_eb <- order(eb, decreasing = TRUE)[1:10]
+    # Generate a vector of colors using the rainbow() function
+    color_eb <- rainbow(length(E(g_comm)))
+    # Set the color of the top 10 edges with highest edge betweenness to red
+    color_eb[top10_eb] <- "#000000"
+    # Set the color of the remaining edges to transparent
+    color_eb[-top10_eb] <- "grey"
+    
+    plot(walktrap_communities, g.trade, vertex.size = 5, vertex.label.cex = 0.3, edge.arrow.size=0.3, vertex.color = walktrap_communities$membership, edge.color = color_eb)
+  })
+  
+  output$textkpi <- renderUI({
+    # 1. Make edge list
+    dt.trade.year <- dt.trade[dt.trade$year == input$year, ]
+    dt.trade.year <- dt.trade.year[dt.trade.year$trade_value_usd > input$weight, ]
+    dt.trade.edgelist <- dt.trade.year[ , c('reporter_name', 'partner_name')]
+    
+    # 2. Convert edge list to an igraph network
+    # igraph wants our data in matrix format
+    m.trade <- as.matrix(dt.trade.edgelist) 
+    g.trade <- graph_from_edgelist(m.trade, directed=TRUE)
+    
+    # 3. Set vertex attributes using set_vertex_attr()
+    l.countries <- as.list(unique(dt.trade.year$reporter_name))
+    dt.country.coordinates <- dt.trade.year %>% distinct(partner_name, .keep_all = TRUE)
+    dt.country.coordinates <- dt.country.coordinates[, c("partner_name", "partner_lat", "partner_long")]
+    meta <- dt.country.coordinates %>% rename("name" = "partner_name", "lat" = "partner_lat", "lon" = "partner_long")
+    
+    vertex_attrs <- as.list(meta[, -1]) # exclude the 'name' column
+    V(g.trade)$lat <- vertex_attrs$lat
+    V(g.trade)$lon <- vertex_attrs$lon
+    
+    # 4. Set the weight of the edges (trade_value_usd) & add the year as an attribute
+    E(g.trade)$weight <- dt.trade.year$trade_value_usd
+    # Remove vertices with degree 0
+    g.trade <- delete.vertices(g.trade, which(degree(g.trade) == 0))
+    
+    # 5. Community detection: Walktrap algorithm
+    walktrap_communities <- walktrap.community(g.trade, weights = E(g.trade)$weight)
+    
+    # get the average path length for each community
+    apl_comm <- lapply(unique(walktrap_communities$membership), function(m) average.path.length(induced_subgraph(g.trade, V(g.trade)[walktrap_communities$membership == m])))
+    apl_all <- average.path.length(g.trade)
+    
+    HTML(paste(" ", "<br>",
+               " ", "<br>",
+               "Number of communities detected by Walktrap algorithm: ", length(unique(walktrap_communities$membership)), "<br>",
+               " ", "<br>",
+               "Modularity score of Walktrap algorithm: ", modularity(walktrap_communities, g), "<br>",
+               " ", "<br>",
+               "Sizes of the communities: ", paste(unname(sizes(walktrap_communities)), collapse = ", "), "<br>",
+               " ", "<br>",
+               " ", "<br>",
+               "Average path length of the total trade network: ", apl_all, "<br>",
+               " ", "<br>",
+               "Average path length of the communities: ", paste(unname(apl_comm), collapse = ", "), "<br>"))
+  })
+  
+  output$textstat <- renderUI({
+    HTML(paste(" ", "<br>",
+               " ", "<br>",
+               " lalala I need to write text here", "<br>"))
+  })
+}
+
+# Create a Shiny app object ----------------------------------------------------
+
+shinyApp(ui = ui, server = server)
+```
+
+```{r}
+## TRY TO PLOT A MAP
+library(data.table)
+library(ggplot2)
+library(igraph)
+library(shiny)
+library(DT)             
+library(shiny)         
+library(ggmap)
+library(leaflet)
+library(bslib)
+library(sf)
+library(geosphere)
+library(RColorBrewer)
+library(sp)
+library(dplyr) 
+
+
+# Load data from file comptab_2018-01-29 16_00_comma_separated.csv 
+dt.trade <- fread("../../data/cleaned_trade_data.csv")
+
+    # 1. Make edge list
+    dt.trade.year <- dt.trade[dt.trade$year == 2021, ]
+    dt.trade.year <- dt.trade.year[dt.trade.year$trade_value_usd > 0, ]
+    dt.trade.edgelist <- dt.trade.year[ , c('reporter_name', 'partner_name')]
+    
+    # 2. Convert edge list to an igraph network
+    # igraph wants our data in matrix format
+    m.trade <- as.matrix(dt.trade.edgelist) 
+    g.trade <- graph_from_edgelist(m.trade, directed=TRUE)
+    
+    # 3. Set vertex attributes using set_vertex_attr()
+    l.reporters <- as.list(unique(dt.trade.year$reporter_name))
+    l.partners <- as.list(unique(dt.trade.year$partner_name))
+    l.countries <- as.list(unique(append(l.reporters, l.partners)))
+    dt.country.coordinates <- dt.trade.year %>% distinct(partner_name, .keep_all = TRUE)
+    dt.country.coordinates <- dt.country.coordinates[, c("partner_name", "partner_lat", "partner_long")]
+    meta <- dt.country.coordinates %>% rename("name" = "partner_name", "lat" = "partner_lat", "lon" = "partner_long")
+
+    meta <- meta[match(V(g.trade)$name, meta$name), ]
+    V(g.trade)$lat <- meta$lat
+    V(g.trade)$lon <- meta$lon
+    
+    # 4. Set the weight of the edges (trade_value_usd) & add the year as an attribute
+    E(g.trade)$weight <- dt.trade.year$trade_value_usd
+    # Remove vertices with degree 0
+    g.trade <- delete.vertices(g.trade, which(degree(g.trade) == 0))
+    
+    # 5. Community detection algorithms
+    # Run Walktrap algorithm
+    walktrap_communities <- walktrap.community(g.trade, weights = E(g.trade)$weight)
+    # Get the community membership vector
+    membership_vec <- membership(walktrap_communities)
+    # Add the community as an attribute to the vectors
+    V(g.trade)$community <- membership_vec[V(g.trade)$name]
+    
+    # Create a new graph object with community memberships as vertex attributes
+    g_comm <- set_vertex_attr(g.trade, "community", value = walktrap_communities$membership)
+    # Convert to igraph object
+    g_comm <- graph_from_data_frame(get.edgelist(g_comm), directed = TRUE)
+    # Compute edge betweenness for the entire graph
+    eb <- igraph::edge.betweenness(g_comm)
+    # Find the top 10 edges with the highest edge betweenness
+    top10_eb <- order(eb, decreasing = TRUE)[1:10]
+    # Generate a vector of colors using the rainbow() function
+    color_eb <- rainbow(length(E(g_comm)))
+    # Set the color of the top 10 edges with highest edge betweenness to red
+    color_eb[top10_eb] <- "red"
+    # Set the color of the remaining edges to transparent
+    color_eb[-top10_eb] <- "transparent"
+    
+    # extract the vertices and edges from the g graph object and store them as a data frame
+    gg <- get.data.frame(g.trade, "both")
+    # assign vert variable with dataframe info on the vertices + add the spatial coordinates of the points to vert
+    vert <- gg$vertices
+    coordinates(vert) <- ~lon + lat
+    # assign edges and weights variable
+    edges <- gg$edges
+    weights <- E(g.trade)$weight
+    
+    # Create a list of spatial objects
+    edges <- lapply(1:nrow(edges), function(i) 
+      {as(rbind(vert[vert$name == edges[i, "from"], ], 
+                vert[vert$name == edges[i, "to"], ]), 
+          "SpatialLines")
+      })
+    # assign unique IDs to each of the SpatialLines objects
+    for (i in seq_along(edges)) {
+      edges[[i]] <- spChFIDs(edges[[i]], as.character(i))
+    }
+    # combine all of the SpatialLines objects + new SpatialLinesDataFrame object using the combined SpatialLines object and the edges_df data frame.
+    edges <- do.call(rbind, edges)
+    edges_df <- data.frame(id = seq_along(edges), weight = weights)
+    edges <- SpatialLinesDataFrame(edges, data = edges_df)
+    
+    # plot map
+    community_colors <- c("blue", "green", "red")
+    
+    leaflet(vert) %>% 
+      addTiles() %>% 
+      addCircleMarkers(data = vert, radius = 2, 
+                   color = community_colors[vert$community], 
+                   fillColor = community_colors[vert$community], 
+                   fillOpacity = 0.8,
+                   stroke = FALSE) %>% 
+      addPolylines(data = edges, weight = 2, color = ~color_eb)
+
+```
+
+
 
 
