@@ -48,31 +48,37 @@ meta <- dt.country.coordinates %>% rename("name" = "partner_name", "lat" = "part
 ```
 
 ```{r}
-dt.trade.country <- dt.trade[ dt.trade$reporter_name == "Germany", ]
-dt.trade.country.year <- dt.trade.country[dt.trade.country$year >= 2018 &
-                                            dt.trade.country$year <= 2021, ]
-dt.trade.country.year <- dt.trade.country.year[dt.trade.country.year$trade_value_usd >                                                      0, ]
-# Set the vertices
-dt.all.reporters <- dt.trade.country.year[, list(name=unique(reporter_name), type=FALSE)]
-dt.all.partners <- dt.trade.country.year[, list(name=unique(partner_name), type=TRUE)]
 
-dt.all.vertices <- rbind(dt.all.reporters, dt.all.partners)
 
-# Create & plot the graph
-g <- graph.data.frame(dt.trade.country.year[, list(reporter_name, partner_name)], directed=TRUE, vertices=dt.all.vertices)
+dt.trade.year <- dt.trade[dt.trade$year >= 2018 & dt.trade$year <= 2021, ]
+dt.trade.edgelist <- dt.trade.year[ , c('reporter_name', 'partner_name')]
+dt.trade.edgelist
 
+
+# 2. Convert edge list to an igraph network
+# igraph wants our data in matrix format
+m.trade <- as.matrix(dt.trade.edgelist) 
+g.trade <- graph_from_edgelist(m.trade, directed=TRUE)
+
+
+# 3. Set the weight of the edges (trade_value_usd) & add the year as an attribute
+E(g.trade)$weight <- dt.trade.year$trade_value_usd
+  # Sum the weights for duplicate edges (we would need this if we select multiple years)
+g <- simplify(g.trade, remove.multiple = TRUE, edge.attr.comb=list(weight="sum", year="concat"))
+
+
+    # remove nodes with zero degree
+g.trade.filtered <- delete.vertices(g, V(g)[degree(g)==0])
     
-# Setting weights as the trade value 
-g <- set_edge_attr(g, "weight", value = dt.trade.country.year$trade_value_usd)
-
-g.subgraph <- subgraph.edges(g, which(V(g)$name == "Germany" ))
-
+    # create subgraph for Germany
+g.subgraph <- subgraph.edges(g.trade.filtered, which(V(g.trade.filtered)$name == "Germany" ))
+g.subgraph.filtered <- delete.vertices(g.subgraph, V(g.subgraph)[degree(g.subgraph)==0])
 
 df.map <- data.frame(
       DegreeCentrality = degree(g,v="Germany"),
       ClosenessCentrality = closeness(g,v="Germany"),
       BetweennessCentrality = betweenness(g,v="Germany"),
-      EigenvectorCentrality = eigen_centrality(g.subgraph)$vector["Germany"],
+      EigenvectorCentrality = eigen_centrality(g)$vector["Germany"],
       ClusteringCoefficient =transitivity(g,v="Germany")
     )
     # Transpose the table
