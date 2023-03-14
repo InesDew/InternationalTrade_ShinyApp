@@ -44,6 +44,43 @@ dt.country.coordinates <- dt.trade %>% distinct(partner_name, .keep_all = TRUE)
 #Selecting only the columns of country name , longitude and latitude and renaming them columns for future plotting
 dt.country.coordinates <- dt.country.coordinates[, c("partner_name", "partner_lat", "partner_long")]
 meta <- dt.country.coordinates %>% rename("name" = "partner_name", "lat" = "partner_lat", "lon" = "partner_long")
+
+```
+
+```{r}
+dt.trade.country <- dt.trade[ dt.trade$reporter_name == "Germany", ]
+dt.trade.country.year <- dt.trade.country[dt.trade.country$year >= 2018 &
+                                            dt.trade.country$year <= 2021, ]
+dt.trade.country.year <- dt.trade.country.year[dt.trade.country.year$trade_value_usd >                                                      0, ]
+# Set the vertices
+dt.all.reporters <- dt.trade.country.year[, list(name=unique(reporter_name), type=FALSE)]
+dt.all.partners <- dt.trade.country.year[, list(name=unique(partner_name), type=TRUE)]
+
+dt.all.vertices <- rbind(dt.all.reporters, dt.all.partners)
+
+# Create & plot the graph
+g <- graph.data.frame(dt.trade.country.year[, list(reporter_name, partner_name)], directed=TRUE, vertices=dt.all.vertices)
+
+    
+# Setting weights as the trade value 
+g <- set_edge_attr(g, "weight", value = dt.trade.country.year$trade_value_usd)
+
+g.subgraph <- subgraph.edges(g, which(V(g)$name == "Germany" ))
+
+
+df.map <- data.frame(
+      DegreeCentrality = degree(g,v="Germany"),
+      ClosenessCentrality = closeness(g,v="Germany"),
+      BetweennessCentrality = betweenness(g,v="Germany"),
+      EigenvectorCentrality = eigen_centrality(g.subgraph)$vector["Germany"],
+      ClusteringCoefficient =transitivity(g,v="Germany")
+    )
+    # Transpose the table
+    df.map.t <- t(df.map)
+    
+    df.map.t
+
+
 ```
 
 ````{r}
@@ -91,21 +128,24 @@ ui <- fluidPage(
       selectInput(inputId = "country", 
                   label = "Select Country:",
                   choices = l.countries, 
-                  selected = "Hungary"),
+                  selected = "Ghana"),
       
       # Select minimum weight
       sliderInput(inputId = "MinWeight",
                 label = "Minimum Trade Value (USD):",
                 min = 0,
                 max = 20000000000,
-                value = 0),
+                value = 0,
+                step = 1000000,
+                width = "90%"
+                ),
       
       # Set year range
       sliderInput(inputId = "year_range",
                   label = "Select Year Range:",
                   min = 2000,
-                  max = 2022,
-                  value = c(2018, 2022),
+                  max = 2021,
+                  value = c(2018, 2021),
                   step = 1)
     ),
     
@@ -139,52 +179,36 @@ server <- function(input, output, session) {
                                             dt.trade.country$year <= input$year_range[2], ]
           dt.trade.country.year <- dt.trade.country.year[dt.trade.country.year$trade_value_usd >                                                      input$MinWeight, ]
           
-          }
+        }
+    # Set the vertices
+    dt.all.reporters <- dt.trade.country.year[, list(name=unique(reporter_name), type=FALSE)]
+    dt.all.partners <- dt.trade.country.year[, list(name=unique(partner_name), type=TRUE)]
 
-        #creating dataframe from the data table and defining from and to parameters
-    df <- data.frame("from" = dt.trade.country.year$reporter_name,
-                     "to"= dt.trade.country.year$partner_name)
+    dt.all.vertices <- rbind(dt.all.reporters, dt.all.partners)
 
-    #checking if there is data from the inputs demanded my the user, if not, map shows a message saying that no data is available
+    # Create & plot the graph
+    g <- graph.data.frame(dt.trade.country.year[, list(reporter_name, partner_name)], directed=TRUE,
+                          vertices=dt.all.vertices)
 
-    if (nrow(df) == 0) {
-      popup <- paste0("No data available for selected country")
-      return(leaflet() %>% addTiles() %>% setView(lng = 0, lat = 0, zoom = 2) %>%
-             addPopups(lng = 0, lat = 0, popup = popup))
-    }
-
-    # Creating graph with data frame where the vertices are the meta data table containing all the countries with their longitude and latitude as previously explained 
-    g <- graph_from_data_frame(df, directed = TRUE, vertices = meta)
-    
     # Setting weights as the trade value 
     g <- set_edge_attr(g, "weight", value = dt.trade.country.year$trade_value_usd)
     
-        # Remove vertices with degree 0
-    g <- delete.vertices(g, which(degree(g) == 0))
-    
-    # Calculate KPIs and store in a data frame
-    # Select a vertex by name
-    country_name <- input$country
-    country_vertex <- V(g)[name == country_name]
-
-
+    g.subgraph <- subgraph.edges(g, which(V(g)$name == input$country))
 
     # Extract the corresponding row from the data frame
-  #  country_row <- df.map[country_vertex$index, ]
 
     df.map <- data.frame(
-      DegreeCentrality = degree(g),
-      ClosenessCentrality = closeness(g),
-      BetweennessCentrality = betweenness(g),
-      EigenvectorCentrality = eigen_centrality(g)$vector,
-      ClusteringCoefficient =transitivity(g)
+      DegreeCentrality = degree(g, v= input$country),
+      ClosenessCentrality = closeness(g, v= input$country),
+      BetweennessCentrality = betweenness(g, v= input$country),
+      EigenvectorCentrality = eigen_centrality(g.subgraph)$vector[input$country],
+      ClusteringCoefficient =transitivity(g, v= input$country)
     )
     # Transpose the table
-    df.map.country <- df.map[,country_vertex$index ]
     df.map.t <- t(df.map)
     
     df.map.t
-    })
+    }, options = list(searching = FALSE, lengthChange = FALSE))
 
   output$map <- renderLeaflet({
 
