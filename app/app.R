@@ -110,13 +110,15 @@ ui <- fluidPage(
                  selectInput(inputId = "countrymap", 
                     label = "Select Country:",
                     choices = l.countries, 
-                    selected = "Hungary"
+                    selected = "Ghana"
                     ),
                  sliderInput(inputId = "MinWeight",
                     label = "Minimum Trade Value (USD):",
                     min = 0,
                     max = 20000000000,
-                    value = 0
+                    value = 0,
+                    step = 1000000,
+                    width = "90%"
                     ),
                  sliderInput(inputId = "year_range",
                     label = "Select Year Range:",
@@ -378,7 +380,9 @@ server <- function(input, output, session) {
       
       #Adding legend for color of the lines representing the weights of exports and import's trade value
       addLegend(position = "bottomright", pal = pal, values = edges_df$weight, 
-                title = "Trade Value (USD)", labFormat = labelFormat(suffix = " USD", digits = 0)) 
+                title = "Trade Value (USD)", labFormat = labelFormat(suffix = " USD", digits = 0)) %>%
+      
+      setView(lng=0,lat=0,zoom=2)
     
   })
   
@@ -398,47 +402,40 @@ server <- function(input, output, session) {
       dt.trade.country.year <- dt.trade.country.year[dt.trade.country.year$trade_value_usd >                                                      input$MinWeight, ]
       
     }
+    # Set the vertices
+    dt.all.reporters <- dt.trade.country.year[, list(name=unique(reporter_name), type=FALSE)]
+    dt.all.partners <- dt.trade.country.year[, list(name=unique(partner_name), type=TRUE)]
     
-    #creating dataframe from the data table and defining from and to parameters
-    df <- data.frame("from" = dt.trade.country.year$reporter_name,
-                     "to"= dt.trade.country.year$partner_name)
+    dt.all.vertices <- rbind(dt.all.reporters, dt.all.partners)
     
-    #checking if there is data from the inputs demanded my the user, if not, map shows a message saying that no data is available
-    
-    if (nrow(df) == 0) {
-      popup <- paste0("No data available for selected country")
-      return(leaflet() %>% addTiles() %>% setView(lng = 0, lat = 0, zoom = 2) %>%
-               addPopups(lng = 0, lat = 0, popup = popup))
-    }
-    
-    # Creating graph with data frame where the vertices are the meta data table containing all the countries with their longitude and latitude as previously explained 
-    g <- graph_from_data_frame(df, directed = TRUE, vertices = meta)
+    # Create & plot the graph
+    g <- graph.data.frame(dt.trade.country.year[, list(reporter_name, partner_name)], directed=TRUE,
+                          vertices=dt.all.vertices)
     
     # Setting weights as the trade value 
     g <- set_edge_attr(g, "weight", value = dt.trade.country.year$trade_value_usd)
     
-    # Calculate KPIs and store in a data frame
-    # Select a vertex by name
-    country_name <- input$country
-    country_vertex <- V(g)[V(g)$name == country_name]
+    g.subgraph <- subgraph.edges(g, which(V(g)$name == input$countrymap))
     
     # Extract the corresponding row from the data frame
-    #  country_row <- df.map[country_vertex$index, ]
     
     df.map <- data.frame(
-      DegreeCentrality = degree(g),
-      ClosenessCentrality = closeness(g),
-      BetweennessCentrality = betweenness(g),
-      EigenvectorCentrality = eigen_centrality(g)$vector,
-      ClusteringCoefficient =transitivity(g)
+      DegreeCentrality = degree(g, v= input$countrymap),
+      ClosenessCentrality = closeness(g, v= input$countrymap),
+      BetweennessCentrality = betweenness(g, v= input$countrymap),
+      EigenvectorCentrality = eigen_centrality(g.subgraph)$vector[input$countrymap],
+      ClusteringCoefficient =transitivity(g, v= input$countrymap)
     )
+    
+    names(df.map) <- c("Degree Centrality", "Closeness Centrality","Betweenness Centrality", "Eigenvector Centrality", "Clustering Coefficient")
+    
     # Transpose the table
-    df.map.country <- df.map[,country_vertex$index ]
     df.map.t <- t(df.map)
     
     df.map.t
-  })
+  }, options = list(searching = FALSE, lengthChange = FALSE, dom = 't', paging = FALSE))
   
+    
   # Data table output
   output$data_table <- renderDT({
     # Filter data
