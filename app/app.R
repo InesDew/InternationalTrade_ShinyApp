@@ -118,7 +118,8 @@ ui <- fluidPage(
                     min = 2000,
                     max = 2022,
                     value = c(2018, 2022),
-                    step = 1)
+                    step = 1,
+                    sep = "")
                  ),
                # Output: Show network
                mainPanel(
