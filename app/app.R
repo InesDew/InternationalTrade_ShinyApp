@@ -55,8 +55,7 @@ create_trade_graph <- function(dt, year_input, continent_input) {
   edge.attributes(g)$weight <- dt.year$trade_value_usd
   
   # Set vertex attributes
-  V(g)$continent <- unlist(json_data[V(g)$name])
-  V(g)$continent[!V(g)$name %in% dt.year$reporter_name] <- NA
+  V(g)$continent <-  unlist(json_data[V(g)$name])
   
   # Filter vertices by continent
   if (!is.null(continent_input)) {
