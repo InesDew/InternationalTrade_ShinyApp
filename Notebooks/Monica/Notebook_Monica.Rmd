@@ -113,7 +113,8 @@ ui <- fluidPage(
     # Output: Show network
     mainPanel(
 
-      leafletOutput("map")
+      leafletOutput("map"),
+      DTOutput("datamap")
     )
   )
 )
@@ -122,6 +123,68 @@ ui <- fluidPage(
 # Define server ----------------------------------------------------------------
 
 server <- function(input, output, session) {
+
+    #  Centralities table output
+  output$datamap <- renderDT({
+    
+      if(input$trader=="reporter_name"){
+        dt.trade.country <- dt.trade[ dt.trade$reporter_name == input$country, ]
+        dt.trade.country.year <- dt.trade.country[dt.trade.country$year >= input$year_range[1] &
+                                            dt.trade.country$year <= input$year_range[2], ]
+        dt.trade.country.year <- dt.trade.country.year[dt.trade.country.year$trade_value_usd >                                                      input$MinWeight, ]
+        
+        } else {
+          dt.trade.country <- dt.trade[ dt.trade$partner_name == input$country, ]
+          dt.trade.country.year <- dt.trade.country[dt.trade.country$year >= input$year_range[1] &
+                                            dt.trade.country$year <= input$year_range[2], ]
+          dt.trade.country.year <- dt.trade.country.year[dt.trade.country.year$trade_value_usd >                                                      input$MinWeight, ]
+          
+          }
+
+        #creating dataframe from the data table and defining from and to parameters
+    df <- data.frame("from" = dt.trade.country.year$reporter_name,
+                     "to"= dt.trade.country.year$partner_name)
+
+    #checking if there is data from the inputs demanded my the user, if not, map shows a message saying that no data is available
+
+    if (nrow(df) == 0) {
+      popup <- paste0("No data available for selected country")
+      return(leaflet() %>% addTiles() %>% setView(lng = 0, lat = 0, zoom = 2) %>%
+             addPopups(lng = 0, lat = 0, popup = popup))
+    }
+
+    # Creating graph with data frame where the vertices are the meta data table containing all the countries with their longitude and latitude as previously explained 
+    g <- graph_from_data_frame(df, directed = TRUE, vertices = meta)
+    
+    # Setting weights as the trade value 
+    g <- set_edge_attr(g, "weight", value = dt.trade.country.year$trade_value_usd)
+    
+        # Remove vertices with degree 0
+    g <- delete.vertices(g, which(degree(g) == 0))
+    
+    # Calculate KPIs and store in a data frame
+    # Select a vertex by name
+    country_name <- input$country
+    country_vertex <- V(g)[name == country_name]
+
+
+
+    # Extract the corresponding row from the data frame
+  #  country_row <- df.map[country_vertex$index, ]
+
+    df.map <- data.frame(
+      DegreeCentrality = degree(g),
+      ClosenessCentrality = closeness(g),
+      BetweennessCentrality = betweenness(g),
+      EigenvectorCentrality = eigen_centrality(g)$vector,
+      ClusteringCoefficient =transitivity(g)
+    )
+    # Transpose the table
+    df.map.country <- df.map[,country_vertex$index ]
+    df.map.t <- t(df.map)
+    
+    df.map.t
+    })
 
   output$map <- renderLeaflet({
 
@@ -203,7 +266,6 @@ server <- function(input, output, session) {
     
     
     leaflet(vert) %>%
-      
       #Format of the map
       addProviderTiles("Stamen.Toner", options = providerTileOptions(noWrap = TRUE, zoomSnap = 0, 
                                                                      attributionControl = FALSE, 
