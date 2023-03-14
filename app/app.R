@@ -61,7 +61,7 @@ create_trade_graph <- function(dt, year_input, continent_input) {
   if (!is.null(continent_input)) {
     g <- induced_subgraph(g, V(g)$continent %in% continent_input)
   }
-  
+  g
 }
 
 # Define UI --------------------------------------------------------------------
@@ -149,7 +149,10 @@ ui <- fluidPage(
                  DTOutput("kpis_table")
                ),
                mainPanel(
+                 h4("Column names of data.trade:"),
+                 textOutput("column_names"),
                  plotOutput("degreeDist"),
+                 plotOutput(outputId = "continent_count"),
                  plotOutput(outputId = "kpi_chart"),
                )
              )),
@@ -205,6 +208,22 @@ ui <- fluidPage(
 )
 # Define server ----------------------------------------------------------------
 server <- function(input, output, session) {
+  
+  output$column_names <- renderText({
+    paste(colnames(dt.trade), collapse = ", ")
+  })
+  
+  output$continent_count <- renderPlot ({
+    g <- create_trade_graph(dt.trade, input$desc_yearInput, input$des_continentInput)
+    
+    # Count number of nodes per continent
+    df <- as.data.frame(table(V(g)$continent))
+    
+    # Plot number of nodes per continent
+    ggplot(df, aes(x = Var1, y = Freq)) +
+      geom_col() +
+      labs(x = "Continent", y = "Number of nodes")
+  })
   
   # Data table output
   output$data_table <- renderDT({
