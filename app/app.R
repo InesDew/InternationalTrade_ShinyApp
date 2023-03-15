@@ -173,12 +173,6 @@ ui <- fluidPage(
                              choices = c('', levels(as.factor(dt.trade$year))),
                              selected = '2021',
                              multiple = FALSE),
-                 sliderInput(inputId = "CommWeight",
-                             label = "Select Minimum Trade Value in USD",
-                             max = 20000000,
-                             min = 0,
-                             value = 0,
-                             step = 1),
                  h6("This page takes some time to load, please wait"),
                  htmlOutput("CommTextKPI")
                  ),
@@ -598,7 +592,6 @@ server <- function(input, output, session) {
   output$CommMap <- renderLeaflet({
     # 1. Make edge list
     dt.trade.year <- dt.trade[dt.trade$year == input$CommYear, ]
-    dt.trade.year <- dt.trade.year[dt.trade.year$trade_value_usd > input$CommWeight, ]
     dt.trade.edgelist <- dt.trade.year[ , c('reporter_name', 'partner_name')]
     
     # 2. Convert edge list to an igraph network
@@ -686,7 +679,6 @@ server <- function(input, output, session) {
   output$CommNetwork <- renderPlot({
     # 1. Make edge list
     dt.trade.year <- dt.trade[dt.trade$year == input$CommYear, ]
-    dt.trade.year <- dt.trade.year[dt.trade.year$trade_value_usd > input$CommWeight, ]
     dt.trade.edgelist <- dt.trade.year[ , c('reporter_name', 'partner_name')]
     
     # 2. Convert edge list to an igraph network
@@ -730,7 +722,6 @@ server <- function(input, output, session) {
   output$CommTextKPI <- renderUI({
     # 1. Make edge list
     dt.trade.year <- dt.trade[dt.trade$year == input$CommYear, ]
-    dt.trade.year <- dt.trade.year[dt.trade.year$trade_value_usd > input$CommWeight, ]
     dt.trade.edgelist <- dt.trade.year[ , c('reporter_name', 'partner_name')]
     
     # 2. Convert edge list to an igraph network
@@ -782,7 +773,6 @@ server <- function(input, output, session) {
   output$CommCountries <- renderDataTable({
     # 1. Make edge list
     dt.trade.year <- dt.trade[dt.trade$year == input$CommYear, ]
-    dt.trade.year <- dt.trade.year[dt.trade.year$trade_value_usd > input$CommWeight, ]
     dt.trade.edgelist <- dt.trade.year[ , c('reporter_name', 'partner_name')]
     
     # 2. Convert edge list to an igraph network
