@@ -78,14 +78,13 @@ create_trade_graph <- function(dt, year_input, continent_input) {
   edge.attributes(g)$weight <- dt.year$trade_value_usd
   
   # Set vertex attributes
-  V(g)$continent <- unlist(json_data[V(g)$name])
-  V(g)$continent[!V(g)$name %in% dt.year$reporter_name] <- NA
+  V(g)$continent <-  unlist(json_data[V(g)$name])
   
   # Filter vertices by continent
   if (!is.null(continent_input)) {
     g <- induced_subgraph(g, V(g)$continent %in% continent_input)
   }
-  
+  g
 }
 
 # Define UI --------------------------------------------------------------------
@@ -228,47 +227,57 @@ ui <- fluidPage(
                    ),
                    multiple = TRUE
                  ),
-                 
-                 actionButton("submit_desc", "Submit")
+                 DTOutput("kpis_table")
                ),
                mainPanel(
+                 h4("Column names of data.trade:"),
+                 textOutput("column_names"),
                  plotOutput("degreeDist"),
+                 plotOutput(outputId = "continent_count"),
                  plotOutput(outputId = "kpi_chart"),
-                 DTOutput("kpis_table")
-                 # Add output tables and plots here
                )
              )),
     tabPanel("Data",
-             sidebarLayout(
-               sidebarPanel(
-                 selectInput(
-                   inputId = "filter_reporter",
-                   label = "Reporter:",
-                   choices = c("", levels(as.factor(
-                     dt.trade$reporter_name
-                   ))),
-                   selected = "",
-                   multiple = FALSE
+               fluidRow(
+                 column(
+                  width = 3,
+                 img(src = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/World_Trade_Organization_%28logo_and_wordmark%29.svg/2560px-World_Trade_Organization_%28logo_and_wordmark%29.svg.png", width = "100%"),
                  ),
-                 selectInput(
-                   inputId = "filter_partner",
-                   label = "Partner:",
-                   choices = c("", levels(as.factor(
-                     dt.trade$partner_name
-                   ))),
-                   selected = "",
-                   multiple = FALSE
+                 column(
+                   width = 3,
+                   selectInput(
+                     inputId = "filter_partner",
+                     label = "Partner:",
+                     choices = c("", levels(as.factor(dt.trade$partner_name))),
+                     selected = "",
+                     multiple = FALSE
+                   )
                  ),
-                 selectInput(
-                   inputId = "filter_year",
-                   label = "Year:",
-                   choices = c("", levels(as.factor(dt.trade$year))),
-                   selected = "",
-                   multiple = FALSE
+                 column(
+                   width = 3,
+                   selectInput(
+                     inputId = "filter_reporter",
+                     label = "Reporter:",
+                     choices = c("", levels(as.factor(dt.trade$reporter_name))),
+                     selected = "",
+                     multiple = FALSE
+                   )
                  ),
+                 column(
+                   width = 3,
+                   selectInput(
+                     inputId = "filter_year",
+                     label = "Year:",
+                     choices = c("", levels(as.factor(dt.trade$year))),
+                     selected = "",
+                     multiple = FALSE
+                   )
                ),
-               mainPanel(DTOutput("data_table"))
-             )),
+               style = "margin-bottom: 10px;",
+             ),
+               DTOutput("data_table",width = "100%")
+    ),
+    
     
     theme = bs_theme(
       bg = "white",
@@ -429,29 +438,49 @@ server <- function(input, output, session) {
   output$data_table <- renderDT({
     # Filter data
     filtered_data <- dt.trade
-    if (input$filter_reporter != "") {
-      filtered_data <-
-        filtered_data[reporter_name %in% input$filter_reporter]
-    }
+
     if (input$filter_partner != "") {
       filtered_data <-
-        filtered_data[partner_name %in% input$filter_partner]
+        filtered_data[filtered_data$partner_name %in% input$filter_partner, ]
+    }
+    if (input$filter_reporter != "") {
+      filtered_data <-
+        filtered_data[filtered_data$reporter_name %in% input$filter_reporter, ]
     }
     if (input$filter_year != "") {
-      filtered_data <- filtered_data[year == input$filter_year]
+      filtered_data <- filtered_data[filtered_data$year == input$filter_year, ]
     }
     
     datatable(
       filtered_data[, c(
-        "reporter_name",
         "partner_name",
+        "reporter_name",
         "trade_value_usd",
-        "reporter_continent",
         "partner_continent",
+        "reporter_continent",
         "year"
       )],
-      filter = "top"
+      filter = "top",
+      width = "100%",
+      options = list(pageLength = 10, scrollX = TRUE),
+      class = 'cell-border stripe',
     )
+  })
+
+    output$column_names <- renderText({
+    paste(colnames(dt.trade), collapse = ", ")
+  })
+  
+  output$continent_count <- renderPlot ({
+    g <- create_trade_graph(dt.trade, input$desc_yearInput, input$des_continentInput)
+    
+    # Count number of nodes per continent
+    df <- as.data.frame(table(V(g)$continent))
+    
+    # Plot number of nodes per continent
+    ggplot(df, aes(x = Var1, y = Freq)) +
+      geom_col() +
+      labs(x = "Continent", y = "Number of nodes")
   })
   
   # Histogram output
