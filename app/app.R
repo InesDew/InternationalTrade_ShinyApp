@@ -18,10 +18,11 @@ library(tidyr)
 library(remotes)
 library(magrittr)
 library(devtools)
+library(rgdal)
 
 # Load data --------------------------------------------------------------------
 dt.trade <- fread("../data/cleaned_trade_data.csv")
-json_data <- fromJSON(file = '../data/sample.json')
+json_data <- fromJSON(file = '../data/continents.json')
 
 #Prepare data for Map Network--------------------------------------------
 
@@ -172,12 +173,6 @@ ui <- fluidPage(
                              choices = c('', levels(as.factor(dt.trade$year))),
                              selected = '2021',
                              multiple = FALSE),
-                 sliderInput(inputId = "CommWeight",
-                             label = "Select Minimum Trade Value in USD",
-                             max = 20000000,
-                             min = 0,
-                             value = 0,
-                             step = 1),
                  h6("This page takes some time to load, please wait"),
                  htmlOutput("CommTextKPI")
                  ),
@@ -627,7 +622,6 @@ server <- function(input, output, session) {
   output$CommMap <- renderLeaflet({
     # 1. Make edge list
     dt.trade.year <- dt.trade[dt.trade$year == input$CommYear, ]
-    dt.trade.year <- dt.trade.year[dt.trade.year$trade_value_usd > input$CommWeight, ]
     dt.trade.edgelist <- dt.trade.year[ , c('reporter_name', 'partner_name')]
     
     # 2. Convert edge list to an igraph network
@@ -680,22 +674,9 @@ server <- function(input, output, session) {
     edges <- gg$edges
     weights <- E(g.trade)$weight
     
-    # Create a list of spatial objects
-    edges <- lapply(1:nrow(edges), function(i) 
-    {as(rbind(vert[vert$name == edges[i, "from"], ], 
-              vert[vert$name == edges[i, "to"], ]), 
-        "SpatialLines")
-    })
-    
-    # assign unique IDs to each of the SpatialLines objects
-    for (i in seq_along(edges)) {
-      edges[[i]] <- spChFIDs(edges[[i]], as.character(i))
-    }
-    
-    # combine all of the SpatialLines objects + new SpatialLinesDataFrame object using the combined SpatialLines object and the edges_df data frame.
-    edges <- do.call(rbind, edges)
-    edges_df <- data.frame(id = seq_along(edges), weight = weights)
-    edges <- SpatialLinesDataFrame(edges, data = edges_df)
+    # import the edges SpatialPointsDataFrame that we preprocessed
+    path_file <- paste0("src/edges_", input$CommYear, ".shp")
+    edges <- st_read(dsn = path_file)
     
     # plot map
     community_colors <- hue_pal()(length(unique(vert$community)))
@@ -715,7 +696,6 @@ server <- function(input, output, session) {
   output$CommNetwork <- renderPlot({
     # 1. Make edge list
     dt.trade.year <- dt.trade[dt.trade$year == input$CommYear, ]
-    dt.trade.year <- dt.trade.year[dt.trade.year$trade_value_usd > input$CommWeight, ]
     dt.trade.edgelist <- dt.trade.year[ , c('reporter_name', 'partner_name')]
     
     # 2. Convert edge list to an igraph network
@@ -759,7 +739,6 @@ server <- function(input, output, session) {
   output$CommTextKPI <- renderUI({
     # 1. Make edge list
     dt.trade.year <- dt.trade[dt.trade$year == input$CommYear, ]
-    dt.trade.year <- dt.trade.year[dt.trade.year$trade_value_usd > input$CommWeight, ]
     dt.trade.edgelist <- dt.trade.year[ , c('reporter_name', 'partner_name')]
     
     # 2. Convert edge list to an igraph network
@@ -811,7 +790,6 @@ server <- function(input, output, session) {
   output$CommCountries <- renderDataTable({
     # 1. Make edge list
     dt.trade.year <- dt.trade[dt.trade$year == input$CommYear, ]
-    dt.trade.year <- dt.trade.year[dt.trade.year$trade_value_usd > input$CommWeight, ]
     dt.trade.edgelist <- dt.trade.year[ , c('reporter_name', 'partner_name')]
     
     # 2. Convert edge list to an igraph network
