@@ -17,7 +17,6 @@ library(scales)
 library(tidyr)
 library(remotes)
 library(magrittr)
-library(devtools)
 library(rgdal)
 
 # Load data --------------------------------------------------------------------
