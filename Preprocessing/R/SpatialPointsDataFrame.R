@@ -10,7 +10,7 @@ library(dplyr)
 
 dt.trade <- fread("../../data/cleaned_trade_data.csv")
 
-for (year in range(2020,2021)) {
+for (year in seq(2000, 2021)) {
   # 1. Make edge list
   dt.trade.year <- dt.trade[dt.trade$year == 2021, ]
   dt.trade.edgelist <- dt.trade.year[ , c('reporter_name', 'partner_name')]
@@ -86,5 +86,5 @@ for (year in range(2020,2021)) {
   name_file = paste0("edges_", year)
   
   # We save the SpatialPointsDataFrame edges
-  writeOGR(edges, dsn = "../../app/src", layer = name_file, driver = "ESRI Shapefile", layer_options = "SHPT=ARC")
+  writeOGR(edges, dsn = "../../app/src", layer = name_file, driver = "ESRI Shapefile")
 }
