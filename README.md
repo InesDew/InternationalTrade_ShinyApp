@@ -1,102 +1,107 @@
 # International Trade ShinyApp
 
-## Contributor
-- Carl Krogmann 55361
-- Ines Dewever 55944
-- Monica Navas 54577
-- Jannis Schmidt 54616 
-
----
-## Links: 
-
-- https://shiny.rstudio.com/tutorial/written-tutorial/lesson1/
-- https://rstudio-education.github.io/shiny-course/
-
----
-## Color Guide:
-- Primary: `#6B63F6 ` ![#6B63F6](https://placehold.co/15x15/6B63F6/6B63F6.png)
-- Secondary: `#ED7185` ![#ED7185](https://placehold.co/15x15/ED7185/ED7185.png)
-
----
 ## Table of Contents
-1. Trade Network
-2. KPI over the years
-3. The virus spread
-4. Descriptives
+
+1. [Overview](#overview)
+2. [Contributors](#contributors)
+3. [Links](#links)
+4. [Installation](#installation)
+5. [Setup](#setup)
+6. [Deployment to Shinyapps.io](#deployment-to-shinyappsio)
+7. [Project Structure](#project-structure)
+8. [Data](#data)
+9. [License](#license)
+10. [Acknowledgments](#acknowledgments)
+
+## Overview
+
+The International Trade ShinyApp is an interactive tool for visualizing and analyzing trade relationships between countries. The app leverages the powerful visualization and data processing capabilities of R to help users better understand the complexities of international trade networks.
+
+## Contributors
+
+- Carl Krogmann (55361)
+- Ines Dewever (55944)
+- Monica Navas (54577)
+- Jannis Schmidt (54616)
+
+## Links
+
+- [ShinyApp](https://carlkrg.shinyapps.io/InternationalTrade/)
+- [GitHub Repository](https://github.com/InesDew/InternationalTrade_ShinyApp)
 
 ---
-## Trade Network - Monica
-![image](/src/images/image4.png)
-Modeled after the shiny flights app ‘airport network’.
+## Installation
 
-### Input:
-- [x] Country (only 1)
-- [x] Export / Import
-- [x] Year (only 1 for now, a slider of a range of years if possible)
+Ensure you have R version 4.2.2 (2022-10-31) or later installed. Then, install the required R packages:
 
-### Output:
-- [ ] A world map that shows all import/export connections of the selected country. We should show the weight of the trade connection (weight = value in USD). A few ideas to show this weight:
-    - you click on a connection and you have a label with partner_name & the value in USD
-    - you get a data table under the map that shows: our selected country, partner_name & corresponding value in USD
-    - The color of the connection corresponds to the value in USD and you have a color scale under the map like this:
+    install.packages(c("shiny", "bslib", "leaflet", "DT", "ggplot2", "scales", "igraph", "rgdal", "rjson", "data.table", "magrittr", "dplyr"))
 
-- [ ] A data table with the following information for the selected country
-    - [ ] Degree Centrality (also split into in-degree centrality and out-degree centrality)
-    - [ ] Closeness centrality
-    - [ ] Betweenness centrality
-    - [ ] Eigenvector centrality
-    - [ ] Clustering coefficient
-- EXTRA: Be able to select a second country (keep import/export and years selected the same) and show the same information for that country (map, weights, centralities) at the same time as the first selection. Kind of like here on shiny flights:
-![image](/src/images/image2.png)
+Load the packages in your R session:
 
----
-## KPI over the years - Jannis
-![image](/src/images/image1.png)
-Multi line chart like above with x-axis years & y-axis a value.
+- library(shiny)
+- library(bslib)
+- library(leaflet)
+- library(DT)
+- library(ggplot2)
+- library(scales)
+- library(igraph)
+- library(rgdal)
+- library(rjson)
+- library(data.table)
+- library(magrittr)
+- library(dplyr)
 
-### Input:
-- [ ] Countries to compare (max 5.)
-- [ ] A year range for the x-axis
-- [ ] A KPI to plot for the y-axis (value of export in USD, the value of import in USD, Amount of partners in export/import, the average value of export/import in USD to a partner country
+## Setup
 
-### Output:
-- [ ] A line plot of the evolution of the KPI for the selected countries in the selected time range
+1. Install the required R packages as mentioned in the Installation section.
+2. Place the raw data file `trade_1988_2021.csv` in the project's root directory, if not already available.
+3. Run the `Setup.ipynb` file.
+4. Run the `Setup.R` file.
+5. Navigate to the `app/` folder and run the `app.R` file.
 
----
-## The virus spread - Ines
-Plot the SI infection/virus/fake news/… model for one or multiple countries
-![image](/src/images/image3.png)
+## Deployment to Shinyapps.io
 
-### Input:
-- [ ] Selected countries (up to 5)
-- [ ] Transmission rate
-### Output:
-- [ ] A plot with an x-axis time
-- [ ] y-axis with the number of countries infected
-- [ ] If you hover over the lines you should see a label with the country & (x,y) values
+To deploy the app to shinyapps.io, run the following commands in the R console:
+
+    rsconnect::setAccountInfo(name='carlkrg', token='6A423720F63892ACDD9472D9C77A68E4', 
+    secret='6hMMwyBlv2R0iJoZKGu1GgQ73gPIXo/lT7nYwX/G')
+
+    rsconnect::deployApp(appName = "InternationalTrade", "/path/to/your/InternationalTrade_ShinyApp/app")
+
+Adjust the local path to the Shiny app project on your local machine if necessary.
 
 ---
-## Descriptives - Carl
-Show descriptives for a selected continent
+## Project Structure
 
-### Input: 
-- [ ] Select a continent, select the whole network
-
-### Output:
-- [ ] a map that lights up the selected continent
-- [ ] Degree distribution plot
-- [ ] continent X exports to … countries and receives imports from … countries
-- [ ] Datatable
-    - [ ] Number of nodes/vertices
-    - [ ] Number of edges
-    - [ ] The average degree of countries
-    - [ ] Median degree of countries
-    - [ ] The average value in USD of edges
-    - [ ] The median value in USD of edges
-    - [ ] The minimum value in USD of edges
-    - [ ] The maximum value in USD of edges
-    - [ ] The standard deviation of value in USD of edges
+The project's structure is organized into folders and files with specific purposes:
 
 
+| File/Folder         | Description                                                   |
+|---------------------|---------------------------------------------------------------|
+| LICENSE             | License information for the project                           |
+| Setup.ipynb         | Jupyter notebook for initial data setup                       |
+| Setup.R             | R script for preprocessing and generating required data       |
+| trade_1988_2021.csv | Raw data file containing international trade information      |
+| README.md           | This file, containing documentation and instructions          |
+| Testing (folder)    | (Optional) Contains any testing or additional development files|
+| app (folder)        | Folder containing the Shiny app files                         |
+| - app.R             | Main Shiny app file, including UI and server components       |
+| - server.R          | Server-side processing for the Shiny app                      |
+| - ui.R              | User interface definition for the Shiny app                   |
+| - global.R          | Global variables and functions for the Shiny app              |
+| - src (folder)      | Folder containing data for the app to run, like cleaned data  |
+| - rsconnect (folder)| Folder containing build files created for the deployment      |
 
 
+## Data
+
+The data used in this ShinyApp is sourced from the [International Trade Database on Kaggle](https://www.kaggle.com/datasets/appetukhov/international-trade-database). The dataset contains comprehensive information on international trade relationships from 1988 to 2021, including trade values, reporter and partner country names, and geographical information. This rich dataset serves as the foundation for the app's visualizations and analyses.
+
+## License
+
+Apache License, Version 2.0, January 2004
+http://www.apache.org/licenses/
+
+## Acknowledgments
+
+Special thanks to OpenAI's AI model for its assistance in creating this README.
