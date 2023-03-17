@@ -89,18 +89,25 @@ ui <- fluidPage(
                              choices = c('', levels(as.factor(dt.trade$year))),
                              selected = '2021',
                              multiple = FALSE),
-                 h6("This page takes some time to load, please wait"),
+                 h6("The map visualization takes some time to load, please wait"),
                  htmlOutput("CommTextKPI")
                ),
                mainPanel(
                  tabsetPanel(
                    tabPanel("Worldmap Plot",
                             leafletOutput("CommMap"),
-                            htmlOutput("CommTextExplanation")
+                            htmlOutput("CommTextMap")
                    ),
-                   tabPanel("Network plot", 
+                   tabPanel("Network Plot", 
                             plotOutput("CommNetwork"),
                             dataTableOutput("CommCountries")
+                   ),
+                   tabPanel("Modularity over Time",
+                            plotOutput("CommModularity"),
+                            htmlOutput("CommTextModularity")
+                   ),
+                   tabPanel("Walktrap Algorithm", 
+                            htmlOutput("CommTextWalktrap")
                    )
                  )
                )

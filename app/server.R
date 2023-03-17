@@ -372,17 +372,6 @@ server <- function(input, output, session) {
     # Add the community as an attribute to the vectors
     V(g.trade)$community <- membership_vec[V(g.trade)$name]
     
-    # Compute edge betweenness for the entire graph
-    eb <- igraph::edge.betweenness(g.trade)
-    # Find the top 10 edges with the highest edge betweenness
-    top10_eb <- order(eb, decreasing = TRUE)[1:10]
-    # Generate a vector of colors using the rainbow() function
-    color_eb <- rainbow(length(E(g.trade)))
-    # Set the color of the top 10 edges with highest edge betweenness to red
-    color_eb[top10_eb] <- "#000000"
-      # Set the color of the remaining edges to transparent
-    color_eb[-top10_eb] <- "transparent"
-    
     # extract the vertices and edges from the g graph object and store them as a data frame
     gg <- get.data.frame(g.trade, "both")
     # assign vert variable with dataframe info on the vertices + add the spatial coordinates of the points to vert
@@ -395,11 +384,7 @@ server <- function(input, output, session) {
     
     # import the edges SpatialPointsDataFrame that we preprocessed
     path_file <- paste0("src/edges_", input$CommYear, ".shp")
-    # The dsn argument refers to the directory containing the shapefile,
-    # and layer refers to the name of the shapefile without the .shp extension
-    dsn <- dirname(path_file)
-    layer <- basename(tools::file_path_sans_ext(path_file))
-    edges <- readOGR(dsn = dsn, layer = layer)
+    edges <- st_read(dsn = path_file)
     
     # plot map
     community_colors <- hue_pal()(length(unique(vert$community)))
@@ -412,8 +397,7 @@ server <- function(input, output, session) {
                        color = community_colors[vert$community], 
                        fillColor = community_colors[vert$community], 
                        fillOpacity = 0.8,
-                       stroke = FALSE) %>% 
-      addPolylines(data = edges, weight = 2, color = ~color_eb)
+                       stroke = FALSE)
   })
   
   output$CommNetwork <- renderPlot({
@@ -445,18 +429,7 @@ server <- function(input, output, session) {
     # Run Walktrap algorithm
     walktrap_communities <- walktrap.community(g.trade, weights = E(g.trade)$weight)
     
-    # Compute edge betweenness for the entire graph
-    eb <- igraph::edge.betweenness(g.trade)
-    # Find the top 10 edges with the highest edge betweenness
-    top10_eb <- order(eb, decreasing = TRUE)[1:10]
-    # Generate a vector of colors using the rainbow() function
-    color_eb <- rainbow(length(E(g.trade)))
-    # Set the color of the top 10 edges with highest edge betweenness to red
-    color_eb[top10_eb] <- "#000000"
-      # Set the color of the remaining edges to transparent
-    color_eb[-top10_eb] <- "grey"
-      
-    plot(walktrap_communities, g.trade, vertex.size = 5, vertex.label.cex = 0.3, edge.arrow.size=0.3, vertex.color = walktrap_communities$membership, edge.color = color_eb)
+    plot(walktrap_communities, g.trade, vertex.size = 5, vertex.label.cex = 0.3, edge.arrow.size=0.3, vertex.color = walktrap_communities$membership, edge.color = 'grey')
   })
   
   output$CommTextKPI <- renderUI({
@@ -488,14 +461,14 @@ server <- function(input, output, session) {
     walktrap_communities <- walktrap.community(g.trade, weights = E(g.trade)$weight)
     
     # get the average path length for each community
-    f_apl <- function(m) average.path.length(induced_subgraph(g.trade, V(g.trade)[walktrap_communities$membership == m]))
+    f_apl <- function(m) round(average.path.length(induced_subgraph(g.trade, V(g.trade)[walktrap_communities$membership == m])), 2)
     apl_comm <- lapply(unique(walktrap_communities$membership), f_apl)
-    apl_all <- average.path.length(g.trade)
+    apl_all <- round(average.path.length(g.trade), 2)
     
     HTML(paste(" ", "<br>",
                "Number of communities detected: ", "<br>", length(unique(walktrap_communities$membership)), "<br>",
                " ", "<br>",
-               "Modularity score: ", "<br>", modularity(walktrap_communities, g), "<br>",
+               "Modularity score: ", "<br>", round(modularity(walktrap_communities, g.trade), 2), "<br>",
                " ", "<br>",
                "Sizes of the communities: ", "<br>", paste(unname(sizes(walktrap_communities)), collapse = ", "), "<br>",
                " ", "<br>",
@@ -504,10 +477,46 @@ server <- function(input, output, session) {
                "Average path length per community: ", "<br>", paste(unname(apl_comm), collapse = ", "), "<br>"))
   })
   
-  output$CommTextExplanation <- renderUI({
+  output$CommTextMap <- renderUI({
     HTML(paste(" ", "<br>",
+               "In 2021, the walktrap algorithm detected 3 communities in our 
+               international trade network, consisting of 153, 73, and 1 vertices. 
+               We observe that the communities are roughly divided by the Tropic 
+               of Cancer. The green community situates itself around the 
+               Mediterranean Sea, and the blue community consists only of South 
+               Georgia and the South Sandwich Islands.",
                " ", "<br>",
-               " lalala I need to write text here", "<br>"))
+               " ", "<br>",
+               "The modularity score compares the number of edges within the 
+               detected communities to the number of edges that would be expected 
+               by chance. The modularity score of 0.26, indicates that they are 
+               of higher quality than randomly selected communities.",
+               " ", "<br>",
+               " ", "<br>"))
+  })
+  
+  output$CommTextWalktrap <- renderUI({
+    HTML(paste(" ", "<br>",
+               "We utilized the Walktrap Algorithm, developed by Pascal Pons, to 
+               detect communities in our trade network. The Walktrap algorithm is 
+               a hierarchical clustering algorithm that identifies communities via 
+               random walks and is based on the idea that short random walks tend 
+               to stay in the same community. Unlike the Louvain clustering 
+               algorithm, the Walktrap algorithm takes weights into consideration 
+               during the process of identifying communities. Furthermore, the 
+               algorithm interprets the weights of edges as connection strengths 
+               between vertices, as opposed to the distance between two vertices, 
+               as is the case with the Edge-betweenness clustering algorithm. 
+               The Walktrap algorithm is generally considered a non-overlapping 
+               community detection algorithm, meaning that each node in the graph 
+               is assigned to a single community and there is no overlap between 
+               the communities. The algorithm is primarily employed in the case 
+               of undirected graphs; however, since two countries are connected 
+               when they trade with each other, regardless of the direction, we 
+               determined the Walktrap algorithm to be the optimal selection for 
+               our community analysis.",
+               " ", "<br>",
+               " ", "<br>"))
   })
   
   output$CommCountries <- renderDataTable({
@@ -552,5 +561,55 @@ server <- function(input, output, session) {
       ungroup() %>%
       mutate(vertex_names = sapply(vertex_names, paste, collapse = ", "))
     community_table
+  })
+  
+  output$CommModularity <- renderPlot({
+    # Create a dataframe to store the modularity scores for each year
+    modularity_df <- data.frame(year = numeric(), modularity_score = numeric())
+    
+    # Loop over each year and compute the modularity score
+    for (element in 2000:2021) {
+      # 1. Make edge list
+      dt.trade.year <- dt.trade[dt.trade$year == element, ]
+      dt.trade.edgelist <- dt.trade.year[ , c('reporter_name', 'partner_name')]
+      # 2. Convert edge list to an igraph network
+      m.trade <- as.matrix(dt.trade.edgelist) 
+      g.trade <- graph_from_edgelist(m.trade, directed=TRUE)
+      # 3. Set the weight of the edges (trade_value_usd) & add the year as an attribute
+      E(g.trade)$weight <- dt.trade.year$trade_value_usd
+      # 4. Remove vertices with degree 0
+      g.trade <- delete.vertices(g.trade, which(degree(g.trade) == 0))
+      # 5. Community detection: Walktrap algorithm
+      walktrap_communities <- walktrap.community(g.trade, weights = E(g.trade)$weight)
+      modularity <- modularity(walktrap_communities, g.trade)
+      
+      # 6. Store the modularity score in the dataframe
+      modularity_df <- rbind(modularity_df, data.frame(year = element, modularity_score = modularity))
+    }
+    
+    # Plot the modularity scores over time
+    ggplot(modularity_df, aes(x = year, y = modularity_score)) +
+      geom_line() +
+      scale_x_continuous(breaks = seq(2000, 2021, by = 2)) +
+      xlab("Year") +
+      ylab("Modularity Score")
+  })
+  
+  output$CommTextModularity <- renderUI({
+    HTML(paste(" ", "<br>",
+               "We analyze the modularity score of our trade network over time 
+               to identify patterns indicating a breakdown in community structure. 
+               A decrease in score may result from factors like globalization or 
+               new trade relationships. The modularity score showed a steady 
+               decrease in 2000-2013, with a steeper drop in 2013-2015. The crash 
+               in modularity score, and thus an increase in globalization, may 
+               be explained by trade liberalization, e-commerce, and emerging 
+               markets like China, India, and Brazil. From 2015-2018, the 
+               modularity score increased from 0.22 to 0.29, suggesting a 
+               decrease in globalization, possibly due to protectionist policies 
+               by the UK (Brexit), the US (Trump’s tariffs), and China's economic 
+               slowdown.",
+               " ", "<br>",
+               " ", "<br>"))
   })
 }
