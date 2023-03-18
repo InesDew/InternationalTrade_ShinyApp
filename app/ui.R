@@ -163,11 +163,13 @@ ui <- fluidPage(
                ),
                mainPanel(
                  tabsetPanel(
-                   tabPanel("Degree Distribution",plotOutput("degreeDist")),
+                   tabPanel("Degree Distribution",plotOutput("degreeDist"),htmlOutput("text.degree.dist")),
                    tabPanel("Countries per Continent",plotOutput(outputId = "continent_count")),
                    tabPanel("Edge Value Distribution",plotOutput(outputId = "kpi_chart")),
                  ),
                  DTOutput("kpis_table")
+                 
+                 
                )
              )),
     tabPanel(
