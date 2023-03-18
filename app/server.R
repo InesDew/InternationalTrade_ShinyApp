@@ -221,8 +221,8 @@ server <- function(input, output, session) {
     
     # Calculate KPIs and store in a data frame
     kpi_df <- data.frame(
-      NumNodes = vcount(g),
-      NumEdges = ecount(g),
+      NumberofNodes = vcount(g),
+      NumberofEdges = ecount(g),
       MeanDegree = mean(degree(g)),
       MedianDegree = median(degree(g)),
       AvgEdgeValueUSD = mean(E(g)$weight),
@@ -243,14 +243,13 @@ server <- function(input, output, session) {
     g <- create_trade_graph(dt.trade, input$desc_yearInput, input$des_continentInput)
     # 6. Create a histogram of edge values
     plot <- hist(
-      E(g)$weight,
+      pmax(E(g)$weight, 1e-9), # Add a small offset to the weights
       main = "Edge Value Distribution",
       xlab = "Trade Value (USD)",
       ylab = "Count",
       col = "#48ADF0",
       border = "black",
-      breaks = seq(0, max(E(g)$weight) + 1e9, by = 1e9),
-      xlim = c(0, max(E(g)$weight))
+      log = "y" # Use a log scale on the y-axis
     )
     
     plot
