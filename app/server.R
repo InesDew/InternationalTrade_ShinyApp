@@ -412,7 +412,7 @@ server <- function(input, output, session) {
                                                          "partner_lat", 
                                                          "partner_long")]
     
-    dt.dt.meta <- dt.country.coordinates %>% rename("name" = "partner_name", 
+    dt.meta <- dt.country.coordinates %>% rename("name" = "partner_name", 
                                                     "lat" = "partner_lat", 
                                                     "lon" = "partner_long")
     
