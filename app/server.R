@@ -270,17 +270,21 @@ server <- function(input, output, session) {
       "Median_Edge_Value_USD" = median(E(g)$weight),
       "Min_Edge_Value_USD" = min(E(g)$weight),
       "Max_Edge_Value_USD" = max(E(g)$weight),
-      "Standard_Deviation_Edge_Value_USD" = sd(E(g)$weight)
+      "Standard_Deviation_Edge_Value_USD" = sd(E(g)$weight),
+      "Average_Path_Length" = mean_distance(g),
+      "Average_Clustering_Coefficient" = transitivity(g, type = "global"),
+      "Diameter" = diameter(g)
     )
+    
     # Transpose the table
     kpi_df_t <- t(kpi_df)
     
     # Make column names more readable
     rownames(kpi_df_t) <- tools::toTitleCase(gsub("_", " ", rownames(kpi_df_t)))
     
-    
     kpi_df_t
   }, options = list(searching = FALSE, lengthChange = FALSE, dom = 't', paging = FALSE))
+  
   
   
   output$kpi_chart <- renderPlot({
