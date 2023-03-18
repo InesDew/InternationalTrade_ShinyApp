@@ -59,7 +59,7 @@ ui <- fluidPage(
                    inputId = "comp_countryInput",
                    label = "Country:",
                    choices = c("", levels(as.factor(dt.trade$reporter_name))),
-                   selected = "Portugal",
+                   selected = c("Italy", "Portugal", "Germany"),
                    multiple = TRUE,
                    options = list(maxItems = 3)
                  ),
@@ -158,8 +158,6 @@ ui <- fluidPage(
                    step = 1,
                    sep = ""
                  ),
-                 h4("Column names of data.trade:"),
-                 textOutput("column_names"),
                ),
                mainPanel(
                  tabsetPanel(
