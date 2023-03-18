@@ -241,6 +241,20 @@ server <- function(input, output, session) {
     )
   })
   
+  output$text.degree.dist <- renderUI({
+    
+    HTML(paste(" ", "<br>","This histogram displays the degree distribution of trade for 
+    the selected countries. It illustrates how frequently countries have different numbers 
+    of connections (degrees) in the trade graph.For instance, if we select European countries, 
+               the histogram will be left-skewed, indicating that most countries have a high degree.
+               This is due to the fact that these countries are more industrialized. In contrast, 
+               if we choose African countries, the degree distribution will be left-skewed, meaning 
+               that countries tend to have a lower degree. This is because there are more 
+               underdeveloped regions in the selected continent.",
+               " ", "<br>",
+               " ", "<br>"))
+  })
+  
   # KPI table output
   output$kpis_table <- renderDT({
     # Create trade graph
@@ -262,7 +276,7 @@ server <- function(input, output, session) {
     kpi_df_t <- t(kpi_df)
     
     kpi_df_t
-  })
+  }, options = list(searching = FALSE, lengthChange = FALSE, dom = 't', paging = FALSE))
   
   # KPI chart output
   output$kpi_chart <- renderPlot({
