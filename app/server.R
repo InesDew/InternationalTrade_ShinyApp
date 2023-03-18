@@ -218,10 +218,11 @@ server <- function(input, output, session) {
     # Count number of nodes per continent
     df <- as.data.frame(table(V(g)$continent))
     
-    # Plot number of nodes per continent
-    ggplot(df, aes(x = Var1, y = Freq)) +
-      geom_col() +
-      labs(x = "Continent", y = "Number of nodes")
+    ggplot(df, aes(x = reorder(Var1, Freq), y = Freq, fill = "#58B99D")) +
+      geom_col(color = "black", size = 0.5) +
+      scale_y_continuous(limits = c(0, 100)) +
+      labs(x = "Continent", y = "Number of nodes") +
+      scale_fill_manual(values = c("#58B99D"))
   })
   
   # Histogram output
@@ -235,8 +236,7 @@ server <- function(input, output, session) {
       main = "Degree Distribution of selected Countries",
       xlab = "Degree",
       ylab = "Count",
-      col = "#48ADF0",
-      border = "black",
+      col = "#58B99D",
       breaks = seq(0, max(degree(g)) + 1, by = 1)
     )
   })
@@ -262,39 +262,45 @@ server <- function(input, output, session) {
     
     # Calculate KPIs and store in a data frame
     kpi_df <- data.frame(
-      NumberofNodes = vcount(g),
-      NumberofEdges = ecount(g),
-      MeanDegree = mean(degree(g)),
-      MedianDegree = median(degree(g)),
-      AvgEdgeValueUSD = mean(E(g)$weight),
-      MedianEdgeValueUSD = median(E(g)$weight),
-      MinEdgeValueUSD = min(E(g)$weight),
-      MaxEdgeValueUSD = max(E(g)$weight),
-      StdDevEdgeValueUSD = sd(E(g)$weight)
+      "Number_of_Vertices" = vcount(g),
+      "Number_of_Edges" = ecount(g),
+      "Mean_Degree_Vertices" = mean(degree(g)),
+      "Median_Degree_Vertices" = median(degree(g)),
+      "Average_Edge_Value_USD" = mean(E(g)$weight),
+      "Median_Edge_Value_USD" = median(E(g)$weight),
+      "Min_Edge_Value_USD" = min(E(g)$weight),
+      "Max_Edge_Value_USD" = max(E(g)$weight),
+      "Standard_Deviation_Edge_Value_USD" = sd(E(g)$weight)
     )
     # Transpose the table
     kpi_df_t <- t(kpi_df)
     
+    # Make column names more readable
+    rownames(kpi_df_t) <- tools::toTitleCase(gsub("_", " ", rownames(kpi_df_t)))
+    
+    
     kpi_df_t
   }, options = list(searching = FALSE, lengthChange = FALSE, dom = 't', paging = FALSE))
   
-  # KPI chart output
+  
   output$kpi_chart <- renderPlot({
     # Create trade graph
     g <- create_trade_graph(dt.trade, input$desc_yearInput, input$des_continentInput)
-    # 6. Create a histogram of edge values
-    plot <- hist(
-      pmax(E(g)$weight, 1e-9), # Add a small offset to the weights
-      main = "Edge Value Distribution",
-      xlab = "Trade Value (USD)",
-      ylab = "Count",
-      col = "#48ADF0",
-      border = "black",
-      log = "y" # Use a log scale on the y-axis
-    )
     
-    plot
+    # Prepare data for ggplot
+    trade_data <- data.frame(trade_value = E(g)$weight)
+    
+    # Plot the histogram of trade amounts using a log2 scale
+    ggplot(trade_data, aes(x = trade_value)) +
+      geom_histogram(bins = 30, fill = "#58B99D", color = "black") +
+      scale_x_continuous(trans = "log2", labels = scales::comma) +
+      ggtitle("Distribution of Trade Amounts Between Countries") +
+      xlab("Trade Amount ($) (log2 scale)") +
+      ylab("Frequency")
   })
+  
+  
+  
   
   #Compare Countries------------------------------------------------------------
   
