@@ -9,16 +9,15 @@ library(shinythemes)
 ui <- fluidPage(
   theme = shinytheme("flatly"),
   navbarPage(
-    title = "International Trade Analysis",
+    title <- "International Trade Analysis",
     tabPanel("Trade Network Map",
              sidebarLayout(
                sidebarPanel(
-                 #Adding logo to sidebar
-                 img(src = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/World_Trade_Organization_%28logo_and_wordmark%29.svg/2560px-World_Trade_Organization_%28logo_and_wordmark%29.svg.png",width="100%"),
-                 #Introducing Inputs for the user to select type of trade, country, minimum trade value and years to plot 
+                 img(src = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/World_Trade_Organization_%28logo_and_wordmark%29.svg/2560px-World_Trade_Organization_%28logo_and_wordmark%29.svg.png", width = "100%"),
                  selectInput(inputId = "trader.map", 
                              label = "Select Imports or Exports:",
-                             choices = c("Exports"="reporter_name","Imports"="partner_name"), 
+                             choices = c("Exports" = "reporter_name","Imports" 
+                                         = "partner_name"), 
                              selected = "reporter_name"
                  ),
                  selectInput(inputId = "country.map", 
@@ -56,35 +55,39 @@ ui <- fluidPage(
                sidebarPanel(
                  img(src = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/World_Trade_Organization_%28logo_and_wordmark%29.svg/2560px-World_Trade_Organization_%28logo_and_wordmark%29.svg.png", width = "100%"),
                  selectizeInput(
-                   inputId = "comp_countryInput",
+                   inputId = "country.comp",
                    label = "Country:",
                    choices = c("", levels(as.factor(dt.trade$reporter_name))),
                    selected = c("Italy", "Portugal", "Germany"),
                    multiple = TRUE,
                    options = list(maxItems = 3)
                  ),
-                 selectInput("column", "KPI:", choices = c("Export Value in USD" = "export_value_usd",
-                                                           "Import Value in USD" = "import_value_usd",
-                                                           "Number of Exporting Partners" = "num_exporting_partners",
-                                                           "Number of Importing Partners" = "num_importing_partners",
-                                                           "Average Export Value per Partner" = "avg_export_value_usd",
-                                                           "Average Import Value per Partner" = "avg_import_value_usd",
-                                                           "Trade Balance in USD" = "trade_balance")),
-                 sliderInput("year", "Year:", 
+                 selectInput("column", "KPI:", 
+                             choices = c("Export Value in USD" = 
+                                           "export_value_usd",
+                                         "Import Value in USD" = 
+                                           "import_value_usd",
+                                         "Number of Exporting Partners" = 
+                                           "num_exporting_partners",
+                                         "Number of Importing Partners" = 
+                                           "num_importing_partners", 
+                                         "Average Export Value per Partner" = 
+                                           "avg_export_value_usd",
+                                         "Average Import Value per Partner" = 
+                                           "avg_import_value_usd",
+                                         "Trade Balance in USD" = 
+                                           "trade_balance")),
+                 sliderInput("year.comp", "Year:", 
                              min = min(dt.merged$year), 
                              max = max(dt.merged$year), 
                              value = c(min(dt.merged$year), max(dt.merged$year)), 
                              step = 1,
-                             sep = "")
+                             sep = ""),
+                 leafletOutput("map.comp")
                ),
                mainPanel(
-                 leafletOutput("map"),
-                 plotOutput("plot"),
-                 p("Example:",
-                   "The export value in USD from 2003 to 2020 for Germany, Italy, and Portugal refers to the monetary value of goods and services exported by these countries over that period of time.",
-                   "It can be observed that Germany has significantly its exports in the period under review, while Italy and Portugal remain almost at the same level.",
-                   "In comparison, it is interesting to see that the number of export partners of Germany and Italy is almost the same and that of Portugal is only a little lower.")
-
+                 plotOutput("plot.comp"),
+                 htmlOutput("example.comp")
                )
              )
     ),
@@ -93,30 +96,30 @@ ui <- fluidPage(
                sidebarPanel(
                  img(src = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/World_Trade_Organization_%28logo_and_wordmark%29.svg/2560px-World_Trade_Organization_%28logo_and_wordmark%29.svg.png", width = "100%"),
                  # Set year range
-                 selectInput(inputId = "CommYear",
+                 selectInput(inputId = "year.comm",
                              label = "Select Year Range:",
                              choices = c('', levels(as.factor(dt.trade$year))),
                              selected = '2021',
                              multiple = FALSE),
-                 h6("The map visualization takes some time to load, please wait"),
-                 htmlOutput("CommTextKPI")
+                 h6("The map visualization takes time to load, please wait"),
+                 htmlOutput("textKPI.comm")
                ),
                mainPanel(
                  tabsetPanel(
                    tabPanel("Worldmap Plot",
-                            leafletOutput("CommMap"),
-                            htmlOutput("CommTextMap")
+                            leafletOutput("map.comm"),
+                            htmlOutput("textMap.comm")
                    ),
                    tabPanel("Network Plot", 
-                            plotOutput("CommNetwork"),
-                            dataTableOutput("CommCountries")
+                            plotOutput("network.comm"),
+                            dataTableOutput("countries.comm")
                    ),
                    tabPanel("Modularity over Time",
-                            plotOutput("CommModularity"),
-                            htmlOutput("CommTextModularity")
+                            plotOutput("modularity.comm"),
+                            htmlOutput("textModularity.comm")
                    ),
                    tabPanel("Walktrap Algorithm", 
-                            htmlOutput("CommTextWalktrap")
+                            htmlOutput("textWalktrap.comm")
                    )
                  )
                )
@@ -127,8 +130,8 @@ ui <- fluidPage(
                sidebarPanel(
                  img(src = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/World_Trade_Organization_%28logo_and_wordmark%29.svg/2560px-World_Trade_Organization_%28logo_and_wordmark%29.svg.png", width = "80%"),
                  selectInput(
-                   inputId = "des_continentInput",
-                   label = "Select a continent:",
+                   inputId = "continent.des",
+                   label = "Select a continent: ",
                    choices = c(
                      "Europe",
                      "Asia",
@@ -150,8 +153,8 @@ ui <- fluidPage(
                    multiple = TRUE
                  ),
                  sliderInput(
-                   "desc_yearInput",
-                   "Year:",
+                   "year.des",
+                   "Year: ",
                    min = min(dt.trade$year),
                    max = max(dt.trade$year),
                    value = c(min(dt.trade$year), max(dt.trade$year)),
@@ -161,9 +164,12 @@ ui <- fluidPage(
                ),
                mainPanel(
                  tabsetPanel(
-                   tabPanel("Degree Distribution",plotOutput("degreeDist"),htmlOutput("text.degree.dist")),
-                   tabPanel("Countries per Continent",plotOutput(outputId = "continent_count")),
-                   tabPanel("Edge Value Distribution",plotOutput(outputId = "kpi_chart")),
+                   tabPanel("Degree Distribution", plotOutput("degreeDist"),
+                            htmlOutput("text.degree.dist")),
+                   tabPanel("Countries per Continent", 
+                            plotOutput(outputId = "continent_count")),
+                   tabPanel("Edge Value Distribution", 
+                            plotOutput(outputId = "kpi_chart")),
                  ),
                  DTOutput("kpis_table")
                  
@@ -182,8 +188,8 @@ ui <- fluidPage(
         column(
           width = 3,
           selectInput(
-            inputId = "filter_partner",
-            label = "Partner:",
+            inputId = "partner.data",
+            label = "Partner: ",
             choices = c("", levels(as.factor(
               dt.trade$partner_name
             ))),
@@ -194,8 +200,8 @@ ui <- fluidPage(
         column(
           width = 3,
           selectInput(
-            inputId = "filter_reporter",
-            label = "Reporter:",
+            inputId = "reporter.data",
+            label = "Reporter: ",
             choices = c("", levels(as.factor(
               dt.trade$reporter_name
             ))),
@@ -206,7 +212,7 @@ ui <- fluidPage(
         column(
           width = 3,
           selectInput(
-            inputId = "filter_year",
+            inputId = "year.data",
             label = "Year:",
             choices = c("", levels(as.factor(dt.trade$year))),
             selected = "",
@@ -215,11 +221,11 @@ ui <- fluidPage(
         ),
         style = "margin-bottom: 10px;",
       ),
-      DTOutput("data_table", width = "100%")
+      DTOutput("table.overview.data", width = "100%")
     ),
     tabPanel("Data Source",
-      htmlOutput("data.source.info"),
-      DTOutput("data.columns")
+      htmlOutput("source.info.data"),
+      DTOutput("source.column.data")
     )
       )
     )

@@ -180,16 +180,16 @@ server <- function(input, output, session) {
     # Filter data
     filtered_data <- dt.trade
     
-    if (input$filter_partner != "") {
+    if (input$partner.data != "") {
       filtered_data <-
-        filtered_data[filtered_data$partner_name %in% input$filter_partner, ]
+        filtered_data[filtered_data$partner_name %in% input$partner.data, ]
     }
-    if (input$filter_reporter != "") {
+    if (input$reporter.data != "") {
       filtered_data <-
-        filtered_data[filtered_data$reporter_name %in% input$filter_reporter, ]
+        filtered_data[filtered_data$reporter_name %in% input$reporter.data, ]
     }
-    if (input$filter_year != "") {
-      filtered_data <- filtered_data[filtered_data$year == input$filter_year, ]
+    if (input$year.data != "") {
+      filtered_data <- filtered_data[filtered_data$year == input$year.data, ]
     }
     
     datatable(
@@ -213,7 +213,7 @@ server <- function(input, output, session) {
   })
   
   output$continent_count <- renderPlot ({
-    g <- create_trade_graph(dt.trade, input$desc_yearInput, input$des_continentInput)
+    g <- create.trade.graph(dt.trade, input$year.des, input$continent.des)
     
     # Count number of nodes per continent
     df <- as.data.frame(table(V(g)$continent))
@@ -228,7 +228,7 @@ server <- function(input, output, session) {
   # Histogram output
   output$degreeDist <- renderPlot({
     # Create trade graph
-    g <- create_trade_graph(dt.trade, input$desc_yearInput, input$des_continentInput)
+    g <- create.trade.graph(dt.trade, input$year.des, input$continent.des)
     
     # Plot degree distribution
     hist(
@@ -256,9 +256,9 @@ server <- function(input, output, session) {
   })
   
   # KPI table output
-  output$kpis_table <- renderDT({
+  output$table.overview.data <- renderDT({
     # Create trade graph
-    g <- create_trade_graph(dt.trade, input$desc_yearInput, input$des_continentInput)
+    g <- create.trade.graph(dt.trade, input$year.des, input$continent.des)
     
     # Calculate KPIs and store in a data frame
     kpi_df <- data.frame(
@@ -285,7 +285,7 @@ server <- function(input, output, session) {
   
   output$kpi_chart <- renderPlot({
     # Create trade graph
-    g <- create_trade_graph(dt.trade, input$desc_yearInput, input$des_continentInput)
+    g <- create.trade.graph(dt.trade, input$year.des, input$continent.des)
     
     # Prepare data for ggplot
     trade_data <- data.frame(trade_value = E(g)$weight)
@@ -306,40 +306,40 @@ server <- function(input, output, session) {
   
   # Create a reactive data frame to filter the data based on the user inputs
   filtered_data <- reactive({
-    countryList <- sort(input$comp_countryInput)
+    countryList <- sort(input$country.comp)
     
-    dt.merged[reporter_name == countryList[1] & year >= input$year[1] & year <= input$year[2]]
+    dt.merged[reporter_name == countryList[1] & year >= input$year.comp[1] & year <= input$year.comp[2]]
   })
   
   # Create reactive data frames for the second and third country selections
   filtered_data2 <- reactive({
-    countryList <- sort(input$comp_countryInput)
+    countryList <- sort(input$country.comp)
     if (!is.null(countryList[2])) {
-      dt.merged[reporter_name == countryList[2] & year >= input$year[1] & year <= input$year[2]]
+      dt.merged[reporter_name == countryList[2] & year >= input$year.comp[1] & year <= input$year.comp[2]]
     } else {
       NULL
     }
   })
   
   filtered_data3 <- reactive({
-    countryList <- sort(input$comp_countryInput)
+    countryList <- sort(input$country.comp)
     if (!is.null(countryList[3])) {
-      dt.merged[reporter_name == countryList[3] & year >= input$year[1] & year <= input$year[2]]
+      dt.merged[reporter_name == countryList[3] & year >= input$year.comp[1] & year <= input$year.comp[2]]
     } else {
       NULL
     }
   })
   
   # Create the plot based on the filtered data
-  output$plot <- renderPlot({
-    countryList <- sort(input$comp_countryInput)
+  output$plot.comp <- renderPlot({
+    countryList <- sort(input$country.comp)
     if (!is.null(filtered_data2()) & !is.null(filtered_data3())) {
       ggplot() +
-        geom_line(data = filtered_data(), aes_string(x = "year", y = input$column, color = "'Country 1'")) +
-        geom_line(data = filtered_data2(), aes_string(x = "year", y = input$column, color = "'Country 2'")) +
-        geom_line(data = filtered_data3(), aes_string(x = "year", y = input$column, color = "'Country 3'")) +
+        geom_line(data = filtered_data(), aes_string(x = "year", y = input$column, color = "'Country 1'"), size = 2) +
+        geom_line(data = filtered_data2(), aes_string(x = "year", y = input$column, color = "'Country 2'"), size = 2) +
+        geom_line(data = filtered_data3(), aes_string(x = "year", y = input$column, color = "'Country 3'"), size = 2) +
         labs(x = "Year",
-             y = label_map[input$column]) +
+             y = label.map[input$column]) +
         scale_color_manual(name = "Country", 
                            values = c("Country 1" = "#F8766D", "Country 2" = "#619CFF", "Country 3" = "#00BA38"),
                            labels = c(countryList[1],countryList[2], countryList[3]))
@@ -348,14 +348,14 @@ server <- function(input, output, session) {
         geom_line(data = filtered_data(), aes_string(x = "year", y = input$column, color = "'Country 1'")) +
         geom_line(data = filtered_data2(), aes_string(x = "year", y = input$column, color = "'Country 2'")) +
         labs(x = "Year",
-             y = label_map[input$column]) +
+             y = label.map[input$column]) +
         scale_color_manual(name = "Country", values = c("Country 1" = "#F8766D", "Country 2" = "#00BA38"),
                            labels = c(countryList[1], countryList[2]))
     } else {
       ggplot(filtered_data(), aes_string(x = "year", y = input$column, color = "'Country 1'")) +
         geom_line() +
         labs(x = "Year",
-             y = label_map[input$column]) +
+             y = label.map[input$column]) +
         scale_color_manual(name = "Country", 
                            values = c("Country 1" = "#F8766D"),
                            labels = c(countryList[1]))
@@ -363,9 +363,9 @@ server <- function(input, output, session) {
   })
   
   # Create the map based on the filtered data
-  output$map <- renderLeaflet({
+  output$map.comp <- renderLeaflet({
     # Create a data frame with only the selected countries' coordinates
-    selected_countries <- unique(dt.merged[reporter_name %in% input$comp_countryInput,
+    selected_countries <- unique(dt.merged[reporter_name %in% input$country.comp,
                                            c("reporter_name","reporter_lat", "reporter_long")])
     # Create a leaflet map centered on the selected countries or the world
     if (nrow(selected_countries) > 0) {
@@ -385,13 +385,42 @@ server <- function(input, output, session) {
                                                                        attributionControl = FALSE, 
                                                                        backgroundColor = "#f2f2f2",opacity = 
                                                                          0.4)) %>%
-        setView(lng = 0, lat = 0, zoom = 2)
+      setView(lng = 0, lat = 0, zoom = 2) %>%
+      leafletOptions(margin = c(100, 50, 50, 50))
     }
   })
   
-  output$CommMap <- renderLeaflet({
+  output$example.comp <- renderUI({
+    HTML(paste(
+      " ", "<br>",
+      "As an example we compare countries Germany, Italy and Portugal over the 
+      time period 2000-2021. We observe that Germany has significantly 
+      increased its exports in the period under review, while Italy and Portugal
+      remained almost at the same level. The number of export partners of Germany
+      and Italy is very similar, while Portugal has significantly less export
+      partners. These first KPIs can be brought together by analysing the average
+      export value per partner. Germany performs significantly better then Italy 
+      and Portugal and has, on average, the highest trade value in USD per export 
+      partner. Similar analysis can be made using the import KPIs.",
+      " ", "<br>",
+      " ", "<br>",
+      "The trade balance is defined as the difference between the value of a 
+      country's exports and the value of a country's imports for a given period.
+      We observe that portugal has a negative trade balance for the whole 21st 
+      century, meaning that the country imports more than it exports which can 
+      be concerning if it continues. Italy has a very steady and slightly positive 
+      trade balance, meaning that the country exports more than it imports. 
+      Germany, on the other hand, reports a highly positive trade balance over 
+      the whole time period. A positive trade balance is seen as favourable and 
+      an indication of economic strenght.",
+      " ", "<br>",
+      " ", "<br>"
+    ))
+  })
+  
+  output$map.comm <- renderLeaflet({
     # 1. Make edge list
-    dt.trade.year <- dt.trade[dt.trade$year == input$CommYear, ]
+    dt.trade.year <- dt.trade[dt.trade$year == input$year.comm, ]
     dt.trade.edgelist <- dt.trade.year[ , c('reporter_name', 'partner_name')]
     
     # 2. Convert edge list to an igraph network
@@ -434,7 +463,7 @@ server <- function(input, output, session) {
     weights <- E(g.trade)$weight
     
     # import the edges SpatialPointsDataFrame that we preprocessed
-    path_file <- paste0("src/edges_", input$CommYear, ".shp")
+    path_file <- paste0("src/edges_", input$year.comm, ".shp")
     # The dsn argument refers to the directory containing the shapefile,
     # and layer refers to the name of the shapefile without the .shp extension
     dsn <- dirname(path_file)
@@ -455,9 +484,9 @@ server <- function(input, output, session) {
                        stroke = FALSE)
   })
   
-  output$CommNetwork <- renderPlot({
+  output$network.comm <- renderPlot({
     # 1. Make edge list
-    dt.trade.year <- dt.trade[dt.trade$year == input$CommYear, ]
+    dt.trade.year <- dt.trade[dt.trade$year == input$year.comm, ]
     dt.trade.edgelist <- dt.trade.year[ , c('reporter_name', 'partner_name')]
     
     # 2. Convert edge list to an igraph network
@@ -487,9 +516,9 @@ server <- function(input, output, session) {
     plot(walktrap_communities, g.trade, vertex.size = 5, vertex.label.cex = 0.3, edge.arrow.size=0.3, vertex.color = walktrap_communities$membership, edge.color = 'grey')
   })
   
-  output$CommTextKPI <- renderUI({
+  output$textKPI.comm <- renderUI({
     # 1. Make edge list
-    dt.trade.year <- dt.trade[dt.trade$year == input$CommYear, ]
+    dt.trade.year <- dt.trade[dt.trade$year == input$year.comm, ]
     dt.trade.edgelist <- dt.trade.year[ , c('reporter_name', 'partner_name')]
     
     # 2. Convert edge list to an igraph network
@@ -532,7 +561,7 @@ server <- function(input, output, session) {
                "Average path length per community: ", "<br>", paste(unname(apl_comm), collapse = ", "), "<br>"))
   })
   
-  output$CommTextMap <- renderUI({
+  output$textMap.comm <- renderUI({
     HTML(paste(" ", "<br>",
                "In 2021, the walktrap algorithm detected 3 communities in our 
                international trade network, consisting of 153, 73, and 1 vertices. 
@@ -551,7 +580,7 @@ server <- function(input, output, session) {
                " ", "<br>"))
   })
   
-  output$CommTextWalktrap <- renderUI({
+  output$textWalktrap.comm <- renderUI({
     HTML(paste(" ", "<br>",
                "We utilized the Walktrap Algorithm, developed by Pascal Pons, to 
                detect communities in our trade network. The Walktrap algorithm is 
@@ -575,9 +604,9 @@ server <- function(input, output, session) {
                " ", "<br>"))
   })
   
-  output$CommCountries <- renderDataTable({
+  output$countries.comm <- renderDataTable({
     # 1. Make edge list
-    dt.trade.year <- dt.trade[dt.trade$year == input$CommYear, ]
+    dt.trade.year <- dt.trade[dt.trade$year == input$year.comm, ]
     dt.trade.edgelist <- dt.trade.year[ , c('reporter_name', 'partner_name')]
     
     # 2. Convert edge list to an igraph network
@@ -619,7 +648,7 @@ server <- function(input, output, session) {
     community_table
   })
   
-  output$CommModularity <- renderPlot({
+  output$modularity.comm <- renderPlot({
     # Create a dataframe to store the modularity scores for each year
     modularity_df <- data.frame(year = numeric(), modularity_score = numeric())
     
@@ -651,7 +680,7 @@ server <- function(input, output, session) {
       ylab("Modularity Score")
   })
   
-  output$CommTextModularity <- renderUI({
+  output$textModularity.comm <- renderUI({
     HTML(paste(" ", "<br>",
                "<ul> <li> An increase in modularity score over time may suggest 
                that the communities in the network are becoming more distinct 
@@ -675,7 +704,7 @@ server <- function(input, output, session) {
                " ", "<br>"))
   })
   
-  output$data.source.info <- renderUI({
+  output$source.info.data <- renderUI({
     HTML(paste(" ", "<br>",
                "The data used in this ShinyApp is sourced from the <a href=", 
                "https://www.kaggle.com/datasets/appetukhov/international-trade-database", 
@@ -695,7 +724,7 @@ server <- function(input, output, session) {
                " ", "<br>"))
   })
   
-  output$data.columns <- renderDT({
+  output$source.column.data <- renderDT({
     # Create data table with column names and descriptions
     attr(dt.trade$reporter_iso_3, "description") <- "ISO3 code of the reporting 
     country"
