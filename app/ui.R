@@ -3,54 +3,56 @@ library(leaflet)
 library(DT)
 library(ggplot2)
 library(scales)
+library(shinythemes)
 
 # Define UI --------------------------------------------------------------------
 ui <- fluidPage(
-  # App title
-  titlePanel("Shiny App for International Trade"),
-  
+  theme = shinytheme("flatly"),
   navbarPage(
-    title = "Network Analytics",
-    
-    tabPanel("Trade Network Map",  
+    title = "International Trade Analysis",
+    tabPanel("Trade Network Map",
              sidebarLayout(
                sidebarPanel(
                  #Adding logo to sidebar
-                 img(src = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/World_Trade_Organization_%28logo_and_wordmark%29.svg/2560px-World_Trade_Organization_%28logo_and_wordmark%29.svg.png",width="100%"),
-                 #Introducing Inputs for the user to select type of trade, country, minimum trade value and years to plot 
-                 selectInput(inputId = "trader", 
-                             label = "Select Imports or Exports:",
-                             choices = c("Exports"="reporter_name","Imports"="partner_name"), 
-                             selected = "reporter_name"
+                 img(src = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/World_Trade_Organization_%28logo_and_wordmark%29.svg/2560px-World_Trade_Organization_%28logo_and_wordmark%29.svg.png", width =
+                       "100%"),
+                 #Introducing Inputs for the user to select type of trade, country, minimum trade value and years to plot
+                 selectInput(
+                   inputId = "trader",
+                   label = "Select Imports or Exports:",
+                   choices = c("Exports" = "reporter_name", "Imports" =
+                                 "partner_name"),
+                   selected = "reporter_name"
                  ),
-                 selectInput(inputId = "countrymap", 
-                             label = "Select Country:",
-                             choices = l.countries, 
-                             selected = "Ghana"
+                 selectInput(
+                   inputId = "countrymap",
+                   label = "Select Country:",
+                   choices = l.countries,
+                   selected = "Ghana"
                  ),
-                 sliderInput(inputId = "MinWeight",
-                             label = "Minimum Trade Value (USD):",
-                             min = 0,
-                             max = 20000000000,
-                             value = 0,
-                             step = 1000000,
-                             width = "90%"
+                 sliderInput(
+                   inputId = "MinWeight",
+                   label = "Minimum Trade Value (USD):",
+                   min = 0,
+                   max = 20000000000,
+                   value = 0,
+                   step = 1000000,
+                   width = "90%"
                  ),
-                 sliderInput(inputId = "year_range",
-                             label = "Select Year Range:",
-                             min = 2000,
-                             max = 2021,
-                             value = c(2018, 2021),
-                             step = 1,
-                             sep = "")
+                 sliderInput(
+                   inputId = "year_range",
+                   label = "Select Year Range:",
+                   min = 2000,
+                   max = 2021,
+                   value = c(2018, 2021),
+                   step = 1,
+                   sep = ""
+                 )
                ),
                # Output: Show network
-               mainPanel(
-                 leafletOutput("map1"),
-                 DTOutput("datamap")
-               )
-             )
-    ),
+               mainPanel(leafletOutput("map1"),
+                         DTOutput("datamap"))
+             )),
     
     tabPanel("Compare Countries",
              sidebarLayout(
@@ -126,92 +128,95 @@ ui <- fluidPage(
     tabPanel("Descriptives",
              sidebarLayout(
                sidebarPanel(
-                 img(src = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/World_Trade_Organization_%28logo_and_wordmark%29.svg/2560px-World_Trade_Organization_%28logo_and_wordmark%29.svg.png", width = "100%"),
-                 selectInput(
-                   inputId = "desc_yearInput",
-                   label = "Year:",
-                   choices = c("", levels(as.factor(dt.trade$year))),
-                   selected = "2021",
-                   multiple = FALSE
-                 ),
+                 img(src = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/World_Trade_Organization_%28logo_and_wordmark%29.svg/2560px-World_Trade_Organization_%28logo_and_wordmark%29.svg.png", width = "80%"),
                  selectInput(
                    inputId = "des_continentInput",
                    label = "Select a continent:",
                    choices = c(
-                     "Asia",
                      "Europe",
+                     "Asia",
                      "Africa",
                      "North America",
                      "South America",
-                     "Australia"
+                     "Oceania",
+                     "Antarctica"
                    ),
                    selected = c(
-                     "Asia",
                      "Europe",
+                     "Asia",
                      "Africa",
                      "North America",
                      "South America",
-                     "Australia"
+                     "Oceania",
+                     "Antarctica"
                    ),
                    multiple = TRUE
                  ),
-                 DTOutput("kpis_table")
-               ),
-               mainPanel(
+                 sliderInput(
+                   "desc_yearInput",
+                   "Year:",
+                   min = min(dt.trade$year),
+                   max = max(dt.trade$year),
+                   value = c(min(dt.trade$year), max(dt.trade$year)),
+                   step = 1,
+                   sep = ""
+                 ),
                  h4("Column names of data.trade:"),
                  textOutput("column_names"),
-                 plotOutput("degreeDist"),
-                 plotOutput(outputId = "continent_count"),
-                 plotOutput(outputId = "kpi_chart"),
+               ),
+               mainPanel(
+                 tabsetPanel(
+                   tabPanel("Degree Distribution",plotOutput("degreeDist")),
+                   tabPanel("Countries per Continent",plotOutput(outputId = "continent_count")),
+                   tabPanel("Edge Value Distribution",plotOutput(outputId = "kpi_chart")),
+                 ),
+                 DTOutput("kpis_table")
                )
              )),
-    tabPanel("Data",
-             fluidRow(
-               column(
-                 width = 3,
-                 img(src = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/World_Trade_Organization_%28logo_and_wordmark%29.svg/2560px-World_Trade_Organization_%28logo_and_wordmark%29.svg.png", width = "100%"),
-               ),
-               column(
-                 width = 3,
-                 selectInput(
-                   inputId = "filter_partner",
-                   label = "Partner:",
-                   choices = c("", levels(as.factor(dt.trade$partner_name))),
-                   selected = "",
-                   multiple = FALSE
-                 )
-               ),
-               column(
-                 width = 3,
-                 selectInput(
-                   inputId = "filter_reporter",
-                   label = "Reporter:",
-                   choices = c("", levels(as.factor(dt.trade$reporter_name))),
-                   selected = "",
-                   multiple = FALSE
-                 )
-               ),
-               column(
-                 width = 3,
-                 selectInput(
-                   inputId = "filter_year",
-                   label = "Year:",
-                   choices = c("", levels(as.factor(dt.trade$year))),
-                   selected = "",
-                   multiple = FALSE
-                 )
-               ),
-               style = "margin-bottom: 10px;",
-             ),
-             DTOutput("data_table",width = "100%")
+    tabPanel(
+      "Data",
+      fluidRow(
+        column(
+          width = 3,
+          img(src = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/World_Trade_Organization_%28logo_and_wordmark%29.svg/2560px-World_Trade_Organization_%28logo_and_wordmark%29.svg.png", width = "100%"),
+        ),
+        column(
+          width = 3,
+          selectInput(
+            inputId = "filter_partner",
+            label = "Partner:",
+            choices = c("", levels(as.factor(
+              dt.trade$partner_name
+            ))),
+            selected = "",
+            multiple = FALSE
+          )
+        ),
+        column(
+          width = 3,
+          selectInput(
+            inputId = "filter_reporter",
+            label = "Reporter:",
+            choices = c("", levels(as.factor(
+              dt.trade$reporter_name
+            ))),
+            selected = "",
+            multiple = FALSE
+          )
+        ),
+        column(
+          width = 3,
+          selectInput(
+            inputId = "filter_year",
+            label = "Year:",
+            choices = c("", levels(as.factor(dt.trade$year))),
+            selected = "",
+            multiple = FALSE
+          )
+        ),
+        style = "margin-bottom: 10px;",
+      ),
+      DTOutput("data_table", width = "100%")
     ),
-    
-    
-    theme = bs_theme(
-      bg = "white",
-      fg = "black",
-      primary = "maroon",
-      base_font = font_google("Montserrat")
-    )
   )
 )

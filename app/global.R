@@ -57,7 +57,7 @@ label_map = c( "export_value_usd" = "Export Value",
 # Create graph from trade data
 create_trade_graph <- function(dt, year_input, continent_input) {
   # Subset data to selected year
-  dt.year <- dt[year == year_input]
+  dt.year <- dt[year %in% year_input]
   
   # Get edge list
   dt.edgelist <- dt.year[, c('reporter_name', 'partner_name')]
