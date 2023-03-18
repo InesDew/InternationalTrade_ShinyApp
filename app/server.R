@@ -625,7 +625,7 @@ server <- function(input, output, session) {
     
     # Plot the modularity scores over time
     ggplot(modularity_df, aes(x = year, y = modularity_score)) +
-      geom_line() +
+      geom_line(color = "#58B99D", size = 2) +
       scale_x_continuous(breaks = seq(2000, 2021, by = 2)) +
       xlab("Year") +
       ylab("Modularity Score")
@@ -653,6 +653,57 @@ server <- function(input, output, session) {
                various factors.",
                " ", "<br>",
                " ", "<br>"))
+  })
+  
+  output$data.source.info <- renderUI({
+    HTML(paste(" ", "<br>",
+               "The data used in this ShinyApp is sourced from the <a href=", 
+               "https://www.kaggle.com/datasets/appetukhov/international-trade-database", 
+               ">International Trade Database on Kaggle</a>. The Kaggle dataset 
+               contains comprehensive information on international trade 
+               relationships from 1988 to 2021, including trade values, reporter 
+               and partner country names, and geographical information. This rich 
+               dataset serves as the foundation for the app's visualizations and 
+               analyses. The information in the dataset is collected from the <a
+               href=", "https://wits.worldbank.org/Default.aspx?lang=en", ">
+               World Integrated Trade Solution (WITS) </a> platform, a software 
+               developed by the World Bank, in close collaboration with United 
+               Nations Conference on Trade and Development (UNCTAD), 
+               International Trade Center (ITC), United Nations Statistical 
+               Division (UNSD), and World Trade Organization (WTO).",
+               " ", "<br>",
+               " ", "<br>"))
+  })
+  
+  output$data.columns <- renderDT({
+    # Create data table with column names and descriptions
+    attr(dt.trade$reporter_iso_3, "description") <- "ISO3 code of the reporting 
+    country"
+    attr(dt.trade$reporter_name, "description") <- "Name of the reporting 
+    country"
+    attr(dt.trade$partner_iso_3, "description") <- "ISO3 code of the partner 
+    (destination) country"
+    attr(dt.trade$partner_name, "description") <- "Name of the partner 
+    (destination) country"
+    attr(dt.trade$year, "description") <- "Reporting year"
+    attr(dt.trade$trade_flow_name, "description") <- "Trade flow direction"
+    attr(dt.trade$trade_value_1000_usd, "description") <- "Value of traded goods 
+    in 1000 USD"
+    attr(dt.trade$trade_value_usd, "description") <- "Value of traded goods in 
+    USD"
+    attr(dt.trade$reporter_continent, "description") <- "Continent of the reporting country"
+    attr(dt.trade$partner_continent, "description") <- "Continent of the partner (destination) country"
+    attr(dt.trade$reporter_lat, "description") <- "Latitude of the reporting country"
+    attr(dt.trade$partner_lat, "description") <- "Latitude of the partner (destination) country"
+    attr(dt.trade$reporter_long, "description") <- "Longitude of the reporting country"
+    attr(dt.trade$partner_long, "description") <- "Longitude of the partner (destination) country"
+    
+    # Extract column names and descriptions
+    col_names <- names(dt.trade)
+    col_desc <- sapply(col_names, function(x) attr(dt.trade[[x]], "description"))
+    
+    # Create data frame with column names and descriptions
+    df <- data.frame(column = col_names, description = col_desc, row.names = NULL)
   })
   
 }

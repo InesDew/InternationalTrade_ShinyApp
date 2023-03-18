@@ -172,6 +172,8 @@ ui <- fluidPage(
              )),
     tabPanel(
       "Data",
+      tabsetPanel(
+      tabPanel("Data Overview",
       fluidRow(
         column(
           width = 3,
@@ -215,5 +217,11 @@ ui <- fluidPage(
       ),
       DTOutput("data_table", width = "100%")
     ),
+    tabPanel("Data Source",
+      htmlOutput("data.source.info"),
+      DTOutput("data.columns")
+    )
+      )
+    )
   )
 )

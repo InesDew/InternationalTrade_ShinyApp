@@ -95,7 +95,7 @@ The project's structure is organized into folders and files with specific purpos
 
 ## Data
 
-The data used in this ShinyApp is sourced from the [International Trade Database on Kaggle](https://www.kaggle.com/datasets/appetukhov/international-trade-database). The dataset contains comprehensive information on international trade relationships from 1988 to 2021, including trade values, reporter and partner country names, and geographical information. This rich dataset serves as the foundation for the app's visualizations and analyses.
+The data used in this ShinyApp is sourced from the [International Trade Database on Kaggle](https://www.kaggle.com/datasets/appetukhov/international-trade-database). The Kaggle dataset contains comprehensive information on international trade relationships from 1988 to 2021, including trade values, reporter and partner country names, and geographical information. This rich dataset serves as the foundation for the app's visualizations and analyses. The information in the dataset is collected from the [World Integrated Trade Solution (WITS)](https://wits.worldbank.org/Default.aspx?lang=en) platform, a software developed by the World Bank, in close collaboration with United Nations Conference on Trade and Development (UNCTAD), International Trade Center (ITC), United Nations Statistical Division (UNSD), and World Trade Organization (WTO).
 
 ## License
 
