@@ -40,6 +40,8 @@ server <- function(input, output, session) {
     
     # Setting weights as the trade value 
     g <- set_edge_attr(g, "weight", value = dt.trade.country.year$trade_value_usd)
+    # Sum the weights for duplicate edges (we would need this if we select multiple years)
+    g <- simplify(g, remove.multiple = TRUE, edge.attr.comb=list(weight="sum", year="concat"))
     
     # Remove vertices with degree 0
     g <- delete.vertices(g, which(degree(g) == 0))
@@ -497,8 +499,9 @@ server <- function(input, output, session) {
                " ", "<br>",
                "The modularity score compares the number of edges within the 
                detected communities to the number of edges that would be expected 
-               by chance. The modularity score of 0.26, indicates that they are 
-               of higher quality than randomly selected communities.",
+               by chance. The modularity score of 0.26 thus signifies that our 
+               detected communities are of higher quality than randomly selected 
+               communities.",
                " ", "<br>",
                " ", "<br>"))
   })
@@ -605,19 +608,26 @@ server <- function(input, output, session) {
   
   output$CommTextModularity <- renderUI({
     HTML(paste(" ", "<br>",
-               "We analyze the modularity score of our trade network over time 
-               to identify patterns indicating a breakdown in community structure. 
-               A decrease in score may result from factors like globalization or 
-               new trade relationships. The modularity score showed a steady 
-               decrease in 2000-2013, with a steeper drop in 2013-2015. The crash 
-               in modularity score, and thus an increase in globalization, may 
-               be explained by trade liberalization, e-commerce, and emerging 
-               markets like China, India, and Brazil. From 2015-2018, the 
-               modularity score increased from 0.22 to 0.29, suggesting a 
-               decrease in globalization, possibly due to protectionist policies 
-               by the UK (Brexit), the US (Trump’s tariffs), and China's economic 
-               slowdown.",
+               "<ul> <li> An increase in modularity score over time may suggest 
+               that the communities in the network are becoming more distinct 
+               and separated from each other, potentially due to changes in trade 
+               policies, economic conditions, or cultural factors. This could 
+               indicate that there are well-defined clusters of countries that 
+               predominantly trade with each other. </li>",
+               "<li> A decrease in modularity score over time may indicate that 
+               the communities in the network are becoming less distinct and more 
+               interconnected, potentially due to factors such as increasing 
+               globalization, economic integration, or changes in trade patterns. 
+               This could suggest that countries are trading with a wider range 
+               of partners and that there are fewer clear clusters of trade 
+               relationships within the network. </li> </ul>",
+               " ", "<br>",
+               "It is important to note that changes in modularity score cannot 
+               be solely attributed to any single factor, and the specific reasons 
+               for these changes may be influenced by a complex interplay of 
+               various factors.",
                " ", "<br>",
                " ", "<br>"))
   })
+  
 }
