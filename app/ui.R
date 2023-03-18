@@ -195,6 +195,9 @@ ui <- fluidPage(
              ),
              DTOutput("data_table",width = "100%")
     ),
+    tabPanel("About",
+      htmlOutput("sources")
+    ),
     
     
     theme = bs_theme(

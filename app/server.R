@@ -493,8 +493,9 @@ server <- function(input, output, session) {
                " ", "<br>",
                "The modularity score compares the number of edges within the 
                detected communities to the number of edges that would be expected 
-               by chance. The modularity score of 0.26, indicates that they are 
-               of higher quality than randomly selected communities.",
+               by chance. The modularity score of 0.26 thus signifies that our 
+               detected communities are of higher quality than randomly selected 
+               communities.",
                " ", "<br>",
                " ", "<br>"))
   })
@@ -614,6 +615,32 @@ server <- function(input, output, session) {
                by the UK (Brexit), the US (Trump’s tariffs), and China's economic 
                slowdown.",
                " ", "<br>",
+               " ", "<br>"))
+  })
+  
+  output$sources <- renderUI({
+    HTML(paste(" ", "<br>",
+               "<h5>Sources</h5>", "<br>",
+               "<ul> <li> Pons, P., & Latapy, M. (2005). Computing communities in 
+               large networks using random walks. Journal of Graph Algorithms 
+               and Applications, 10(2), 191-218. </li>",
+               "<li> Blondel, V. D., Guillaume, J. L., Lambiotte, R., & Lefebvre, 
+               E. (2008). Fast unfolding of communities in large networks. 
+               Journal of Statistical Mechanics: Theory and Experiment, 2008(10), 
+               P10008. </li>",
+               "<li> Fortunato, S. (2010). Community detection in graphs. 
+               Physics Reports, 486(3-5), 75-174. </li>", 
+               "<li> Newman, M. E. J. (2018). Networks. Oxford University Press. 
+               </li>",
+               "<li> McLean, R. C., & Leitner, D. (2013). Node-centric community 
+               detection in directed networks. Physical Review E, 87(1), 012803. 
+               </li>",
+               "<li> Yucel, R., & Demiralay, S. (2021). Complex network analysis 
+               of international trade: A review. Journal of Cleaner Production, 
+               280, 124219. </li>",
+               "<li> 'Tropic of Cancer.' National Geographic Society, 
+               https://www.nationalgeographic.org/encyclopedia/tropic-cancer/. 
+               </li></ul>",
                " ", "<br>"))
   })
 }
