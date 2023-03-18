@@ -23,7 +23,7 @@ library(RColorBrewer)
 library(sp)
 
 # Load data from file cleaned_trade_data.csv 
-dt.trade <- fread("../../data/cleaned_trade_data.csv") 
+dt.trade <- fread("../../app/src/cleaned_trade_data.csv") 
 
 # Save dt.trade 
 save(dt.trade, file="trade.RData") 
@@ -48,7 +48,7 @@ meta <- dt.country.coordinates %>% rename("name" = "partner_name", "lat" = "part
 ```
 
 ```{r}
-
+#TEST MANUAL
 
 dt.trade.year <- dt.trade[dt.trade$year >= 2018 & dt.trade$year <= 2021, ]
 dt.trade.edgelist <- dt.trade.year[ , c('reporter_name', 'partner_name')]
@@ -138,13 +138,13 @@ ui <- fluidPage(
       
       # Select minimum weight
       sliderInput(inputId = "MinWeight",
-                label = "Minimum Trade Value (USD):",
-                min = 0,
-                max = 20000000000,
-                value = 0,
-                step = 1000000,
-                width = "90%"
-                ),
+            label = "Minimum Trade Value (% of total trade):",
+            min = 0,
+            max = 100,
+            value = 0,
+            step = 1,
+            width = "90%"),
+
       
       # Set year range
       sliderInput(inputId = "year_range",
@@ -173,19 +173,23 @@ server <- function(input, output, session) {
     #  Centralities table output
   output$datamap <- renderDT({
     
-      if(input$trader=="reporter_name"){
-        dt.trade.country <- dt.trade[ dt.trade$reporter_name == input$country, ]
-        dt.trade.country.year <- dt.trade.country[dt.trade.country$year >= input$year_range[1] &
+    if(input$trader=="reporter_name"){
+      dt.trade.country <- dt.trade[ dt.trade$reporter_name == input$country, ]
+      dt.trade.country.year <- dt.trade.country[dt.trade.country$year >= input$year_range[1] &
                                             dt.trade.country$year <= input$year_range[2], ]
-        dt.trade.country.year <- dt.trade.country.year[dt.trade.country.year$trade_value_usd >                                                      input$MinWeight, ]
-        
-        } else {
-          dt.trade.country <- dt.trade[ dt.trade$partner_name == input$country, ]
-          dt.trade.country.year <- dt.trade.country[dt.trade.country$year >= input$year_range[1] &
+      # Filter by the percentage value
+      dt.trade.country.year <- dt.trade.country.year[dt.trade.country.year$trade_value_usd /
+                                                  max(dt.trade.country.year$trade_value_usd) *
+                                                  100 >= input$MinWeight, ]
+    } else {
+      dt.trade.country <- dt.trade[ dt.trade$partner_name == input$country, ]
+      dt.trade.country.year <- dt.trade.country[dt.trade.country$year >= input$year_range[1] &
                                             dt.trade.country$year <= input$year_range[2], ]
-          dt.trade.country.year <- dt.trade.country.year[dt.trade.country.year$trade_value_usd >                                                      input$MinWeight, ]
-          
-        }
+      # Filter by the percentage value
+      dt.trade.country.year <- dt.trade.country.year[dt.trade.country.year(trade_value_usd /
+                                                  max(dt.trade.country.year$trade_value_usd) *
+                                                  100 >= input$MinWeight, ]
+    }
     # Set the vertices
     dt.all.reporters <- dt.trade.country.year[, list(name=unique(reporter_name), type=FALSE)]
     dt.all.partners <- dt.trade.country.year[, list(name=unique(partner_name), type=TRUE)]
@@ -224,15 +228,20 @@ server <- function(input, output, session) {
       dt.trade.country <- dt.trade[ dt.trade$reporter_name == input$country, ]
       dt.trade.country.year <- dt.trade.country[dt.trade.country$year >= input$year_range[1] &
                                             dt.trade.country$year <= input$year_range[2], ]
-      dt.trade.country.year <- dt.trade.country.year[dt.trade.country.year$trade_value_usd >                                                      input$MinWeight, ]
-
+      # Filter by the percentage value
+      dt.trade.country.year <- dt.trade.country.year[dt.trade.country.year$trade_value_usd /
+                                                  max(dt.trade.country.year$trade_value_usd) *
+                                                  100 >= input$MinWeight, ]
     } else {
       dt.trade.country <- dt.trade[ dt.trade$partner_name == input$country, ]
       dt.trade.country.year <- dt.trade.country[dt.trade.country$year >= input$year_range[1] &
                                             dt.trade.country$year <= input$year_range[2], ]
-      dt.trade.country.year <- dt.trade.country.year[dt.trade.country.year$trade_value_usd >                                                      input$MinWeight, ]
-
+      # Filter by the percentage value
+      dt.trade.country.year <- dt.trade.country.year[dt.trade.country.year$trade_value_usd /
+                                                  max(dt.trade.country.year$trade_value_usd) *
+                                                  100 >= input$MinWeight, ]
     }
+
 
     #creating dataframe from the data table and defining from and to parameters
     df <- data.frame("from" = dt.trade.country.year$reporter_name,
@@ -292,8 +301,8 @@ server <- function(input, output, session) {
     edges <- SpatialLinesDataFrame(edges, data = edges_df)
 
     #defining color palette for weights on the map used below
+    #pal <- colorQuantile(palette = "YlOrRd", domain = edges_df$weight, n = 5)
     pal <- colorNumeric(palette = "YlOrRd", domain = c(min(edges_df$weight), max(edges_df$weight)))
-    
     
     leaflet(vert) %>%
       #Format of the map

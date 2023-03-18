@@ -18,25 +18,25 @@ ui <- fluidPage(
                  #Adding logo to sidebar
                  img(src = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/World_Trade_Organization_%28logo_and_wordmark%29.svg/2560px-World_Trade_Organization_%28logo_and_wordmark%29.svg.png",width="100%"),
                  #Introducing Inputs for the user to select type of trade, country, minimum trade value and years to plot 
-                 selectInput(inputId = "trader", 
+                 selectInput(inputId = "trader.map", 
                              label = "Select Imports or Exports:",
                              choices = c("Exports"="reporter_name","Imports"="partner_name"), 
                              selected = "reporter_name"
                  ),
-                 selectInput(inputId = "countrymap", 
+                 selectInput(inputId = "country.map", 
                              label = "Select Country:",
                              choices = l.countries, 
                              selected = "Ghana"
                  ),
-                 sliderInput(inputId = "MinWeight",
-                             label = "Minimum Trade Value (USD):",
+                 sliderInput(inputId = "weight.map",
+                             label = "% of Maximum Trade Value:",
                              min = 0,
-                             max = 20000000000,
+                             max = 100,
                              value = 0,
-                             step = 1000000,
+                             step = 1,
                              width = "90%"
                  ),
-                 sliderInput(inputId = "year_range",
+                 sliderInput(inputId = "year.map",
                              label = "Select Year Range:",
                              min = 2000,
                              max = 2021,
@@ -46,8 +46,9 @@ ui <- fluidPage(
                ),
                # Output: Show network
                mainPanel(
-                 leafletOutput("map1"),
-                 DTOutput("datamap")
+                 leafletOutput("network.map"),
+                 htmlOutput("text.map"),
+                 DTOutput("centralities.map")
                )
              )
     ),

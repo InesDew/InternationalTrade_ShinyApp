@@ -5,21 +5,26 @@ library(rgdal)
 server <- function(input, output, session) {
   
   # Map output
-  output$map1 <- renderLeaflet({
+  output$network.map <- renderLeaflet({
     
     # Set the parameters of the inputs to select years, minimum trade, reporter and partner name
     # This is done with an if statement depending if user selected Exports or Imports 
-    if(input$trader=="reporter_name"){
-      dt.trade.country <- dt.trade[ dt.trade$reporter_name == input$countrymap, ]
-      dt.trade.country.year <- dt.trade.country[dt.trade.country$year >= input$year_range[1] &
-                                                  dt.trade.country$year <= input$year_range[2], ]
-      dt.trade.country.year <- dt.trade.country.year[dt.trade.country.year$trade_value_usd >                                                      input$MinWeight, ]
+    if(input$trader.map=="reporter_name"){
+      dt.trade.country <- dt.trade[ dt.trade$reporter_name == input$country.map, ]
+      dt.trade.country.year <- dt.trade.country[dt.trade.country$year >= input$year.map[1] &
+                                                  dt.trade.country$year <= input$year.map[2], ]
+      dt.trade.country.year <- dt.trade.country.year[dt.trade.country.year$trade_value_usd/
+                                                       max(dt.trade.country.year$trade_value_usd) * 
+                                                       100 >= input$weight.map, ]
+      
       
     } else {
-      dt.trade.country <- dt.trade[ dt.trade$partner_name == input$countrymap, ]
-      dt.trade.country.year <- dt.trade.country[dt.trade.country$year >= input$year_range[1] &
-                                                  dt.trade.country$year <= input$year_range[2], ]
-      dt.trade.country.year <- dt.trade.country.year[dt.trade.country.year$trade_value_usd >                                                      input$MinWeight, ]
+      dt.trade.country <- dt.trade[ dt.trade$partner_name == input$country.map, ]
+      dt.trade.country.year <- dt.trade.country[dt.trade.country$year >= input$year.map[1] &
+                                                  dt.trade.country$year <= input$year.map[2], ]
+      dt.trade.country.year <- dt.trade.country.year[dt.trade.country.year$trade_value_usd/
+                                                       max(dt.trade.country.year$trade_value_usd) * 
+                                                       100 >= input$weight.map, ]
       
     }
     
@@ -40,6 +45,9 @@ server <- function(input, output, session) {
     
     # Setting weights as the trade value 
     g <- set_edge_attr(g, "weight", value = dt.trade.country.year$trade_value_usd)
+    
+    # Sum the weights for duplicate edges (we would need this if we select multiple years)
+    g <- simplify(g, remove.multiple = TRUE, edge.attr.comb=list(weight="sum", year="concat"))
     
     # Remove vertices with degree 0
     g <- delete.vertices(g, which(degree(g) == 0))
@@ -83,6 +91,10 @@ server <- function(input, output, session) {
     #defining color palette for weights on the map used below
     pal <- colorNumeric(palette = "YlOrRd", domain = c(min(edges_df$weight), max(edges_df$weight)))
     
+    #long and lat for setting zoom of the map
+    dt.zoom <- meta[meta$name==input$country.map,]
+  
+  
     
     leaflet(vert) %>%
       
@@ -105,14 +117,27 @@ server <- function(input, output, session) {
       addLegend(position = "bottomright", pal = pal, values = edges_df$weight, 
                 title = "Trade Value (USD)", labFormat = labelFormat(suffix = " USD", digits = 0)) %>%
       
-      setView(lng=0,lat=0,zoom=2)
+      setView(lng=dt.zoom$lon,lat=dt.zoom$lat,zoom=2)
     
   })
   
-  #Centrality Table Output
-  output$datamap <- renderDT({
+  output$text.map <- renderUI({
     
-    dt.trade.year <- dt.trade[dt.trade$year >= input$year_range[1] & dt.trade$year <= input$year_range[2], ]
+    HTML(paste(" ", "<br>","This tab allows us to explore the international trade network of a selected
+               country and time frame displayed on the map above. The user can choose to visualise either
+               imports or exports of the selected country. For instance, by default, Ghana was selected as
+               the country, and the map exhibits its export trade through lines connecting to all its export
+               destinations. These lines are color-coded to indicate the increase in trade value. A minimum 
+               trade value can be selected making it easier to interpret the high-value trades. For Ghana, we 
+               can deduce that its most significant export partner is India.",
+               " ", "<br>",
+               " ", "<br>"))
+    })
+  
+  #Centrality Table Output
+  output$centralities.map <- renderDT({
+    
+    dt.trade.year <- dt.trade[dt.trade$year >= input$year.map[1] & dt.trade$year <= input$year.map[2], ]
     dt.trade.edgelist <- dt.trade.year[ , c('reporter_name', 'partner_name')]
     dt.trade.edgelist
     
@@ -132,11 +157,11 @@ server <- function(input, output, session) {
     # Extract the corresponding row from the data frame
     
     df.map <- data.frame(
-      DegreeCentrality = degree(g, v= input$countrymap),
-      ClosenessCentrality = closeness(g, v= input$countrymap),
-      BetweennessCentrality = betweenness(g, v= input$countrymap),
-      EigenvectorCentrality = round(eigen_centrality(g)$vector[input$countrymap],4),
-      ClusteringCoefficient = round(transitivity(g, v= input$countrymap),4)
+      DegreeCentrality = degree(g, v= input$country.map),
+      ClosenessCentrality = closeness(g, v= input$country.map),
+      BetweennessCentrality = betweenness(g, v= input$country.map),
+      EigenvectorCentrality = round(eigen_centrality(g)$vector[input$country.map],4),
+      ClusteringCoefficient = round(transitivity(g, v= input$country.map),4)
     )
     
     names(df.map) <- c("Degree Centrality", "Closeness Centrality","Betweenness Centrality", "Eigenvector Centrality", "Clustering Coefficient")
