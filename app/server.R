@@ -40,6 +40,8 @@ server <- function(input, output, session) {
     
     # Setting weights as the trade value 
     g <- set_edge_attr(g, "weight", value = dt.trade.country.year$trade_value_usd)
+    # Sum the weights for duplicate edges (we would need this if we select multiple years)
+    g <- simplify(g, remove.multiple = TRUE, edge.attr.comb=list(weight="sum", year="concat"))
     
     # Remove vertices with degree 0
     g <- delete.vertices(g, which(degree(g) == 0))
