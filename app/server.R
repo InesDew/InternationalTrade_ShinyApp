@@ -221,7 +221,7 @@ server <- function(input, output, session) {
     ggplot(df, aes(x = reorder(Var1, Freq), y = Freq, fill = "#58B99D")) +
       geom_col(color = "black", size = 0.5) +
       scale_y_continuous(limits = c(0, 100)) +
-      labs(x = "Continent", y = "Number of nodes") +
+      labs(x = "Continent", y = "Frequency") +
       scale_fill_manual(values = c("#58B99D"))
   })
   
@@ -235,7 +235,7 @@ server <- function(input, output, session) {
       degree(g),
       main = "Degree Distribution of selected Countries",
       xlab = "Degree",
-      ylab = "Count",
+      ylab = "Frequency",
       col = "#58B99D",
       breaks = seq(0, max(degree(g)) + 1, by = 1)
     )
@@ -294,7 +294,6 @@ server <- function(input, output, session) {
     ggplot(trade_data, aes(x = trade_value)) +
       geom_histogram(bins = 30, fill = "#58B99D", color = "black") +
       scale_x_continuous(trans = "log2", labels = scales::comma) +
-      ggtitle("Distribution of Trade Amounts Between Countries") +
       xlab("Trade Amount ($) (log2 scale)") +
       ylab("Frequency")
   })
