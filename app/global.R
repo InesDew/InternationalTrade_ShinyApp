@@ -45,6 +45,14 @@ dt.merged <- merge(dt.export, dt.import,
 # Calculate trade balance
 dt.merged$trade_balance <- dt.merged$export_value_usd - dt.merged$import_value_usd
 
+label_map = c( "export_value_usd" = "Export Value",
+               "avg_export_value_usd" = "Average Export Value per Partner",
+               "import_value_usd" = "Import Value",
+               "num_exporting_partners" = "Number of Exporting Partners",
+               "num_importing_partners" = "Number of Importing Partners",
+               "avg_import_value_usd" = "Average Import Value per Partner",
+               "trade_balance" = "Trade Balance")
+
 # Helper Functions -------------------------------------------------------------
 # Create graph from trade data
 create_trade_graph <- function(dt, year_input, continent_input) {

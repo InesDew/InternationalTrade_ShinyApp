@@ -56,16 +56,21 @@ ui <- fluidPage(
              sidebarLayout(
                sidebarPanel(
                  img(src = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/World_Trade_Organization_%28logo_and_wordmark%29.svg/2560px-World_Trade_Organization_%28logo_and_wordmark%29.svg.png", width = "100%"),
-                 selectInput("country", "Country:", choices = c("", sort(unique(dt.merged$reporter_name))), selected = NULL),
-                 selectInput("country2", "Country 2:", choices = c("", sort(unique(dt.merged$reporter_name))), selected = NULL),
-                 selectInput("country3", "Country 3:", choices = c("", sort(unique(dt.merged$reporter_name))), selected = NULL),
-                 selectInput("column", "KPI:", choices = c("Export Value" = "export_value_usd",
-                                                           "Average Export Value per Partner" = "avg_export_value_usd",
-                                                           "Import Value" = "import_value_usd",
+                 selectizeInput(
+                   inputId = "comp_countryInput",
+                   label = "Country:",
+                   choices = c("", levels(as.factor(dt.trade$reporter_name))),
+                   selected = "Portugal",
+                   multiple = TRUE,
+                   options = list(maxItems = 3)
+                 ),
+                 selectInput("column", "KPI:", choices = c("Export Value in USD" = "export_value_usd",
+                                                           "Import Value in USD" = "import_value_usd",
                                                            "Number of Exporting Partners" = "num_exporting_partners",
                                                            "Number of Importing Partners" = "num_importing_partners",
+                                                           "Average Export Value per Partner" = "avg_export_value_usd",
                                                            "Average Import Value per Partner" = "avg_import_value_usd",
-                                                           "Trade Balance" = "trade_balance")),
+                                                           "Trade Balance in USD" = "trade_balance")),
                  sliderInput("year", "Year:", 
                              min = min(dt.merged$year), 
                              max = max(dt.merged$year), 
@@ -75,7 +80,12 @@ ui <- fluidPage(
                ),
                mainPanel(
                  leafletOutput("map"),
-                 plotOutput("plot")
+                 plotOutput("plot"),
+                 p("Example:",
+                   "The export value in USD from 2003 to 2020 for Germany, Italy, and Portugal refers to the monetary value of goods and services exported by these countries over that period of time.",
+                   "It can be observed that Germany has significantly its exports in the period under review, while Italy and Portugal remain almost at the same level.",
+                   "In comparison, it is interesting to see that the number of export partners of Germany and Italy is almost the same and that of Portugal is only a little lower.")
+
                )
              )
     ),

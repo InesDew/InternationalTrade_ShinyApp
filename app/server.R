@@ -260,21 +260,25 @@ server <- function(input, output, session) {
   
   # Create a reactive data frame to filter the data based on the user inputs
   filtered_data <- reactive({
-    dt.merged[reporter_name == input$country & year >= input$year[1] & year <= input$year[2]]
+    countryList <- sort(input$comp_countryInput)
+    
+    dt.merged[reporter_name == countryList[1] & year >= input$year[1] & year <= input$year[2]]
   })
   
   # Create reactive data frames for the second and third country selections
   filtered_data2 <- reactive({
-    if (!is.null(input$country2)) {
-      dt.merged[reporter_name == input$country2 & year >= input$year[1] & year <= input$year[2]]
+    countryList <- sort(input$comp_countryInput)
+    if (!is.null(countryList[2])) {
+      dt.merged[reporter_name == countryList[2] & year >= input$year[1] & year <= input$year[2]]
     } else {
       NULL
     }
   })
   
   filtered_data3 <- reactive({
-    if (!is.null(input$country3)) {
-      dt.merged[reporter_name == input$country3 & year >= input$year[1] & year <= input$year[2]]
+    countryList <- sort(input$comp_countryInput)
+    if (!is.null(countryList[3])) {
+      dt.merged[reporter_name == countryList[3] & year >= input$year[1] & year <= input$year[2]]
     } else {
       NULL
     }
@@ -282,39 +286,40 @@ server <- function(input, output, session) {
   
   # Create the plot based on the filtered data
   output$plot <- renderPlot({
+    countryList <- sort(input$comp_countryInput)
     if (!is.null(filtered_data2()) & !is.null(filtered_data3())) {
       ggplot() +
         geom_line(data = filtered_data(), aes_string(x = "year", y = input$column, color = "'Country 1'")) +
         geom_line(data = filtered_data2(), aes_string(x = "year", y = input$column, color = "'Country 2'")) +
         geom_line(data = filtered_data3(), aes_string(x = "year", y = input$column, color = "'Country 3'")) +
         labs(x = "Year",
-             y = input$column) +
+             y = label_map[input$column]) +
         scale_color_manual(name = "Country", 
-                           values = c("Country 1" = "red", "Country 2" = "blue", "Country 3" = "green"),
-                           labels = c(input$country, input$country2, input$country3))
+                           values = c("Country 1" = "#F8766D", "Country 2" = "#619CFF", "Country 3" = "#00BA38"),
+                           labels = c(countryList[1],countryList[2], countryList[3]))
     } else if (!is.null(filtered_data2())) {
       ggplot() +
         geom_line(data = filtered_data(), aes_string(x = "year", y = input$column, color = "'Country 1'")) +
         geom_line(data = filtered_data2(), aes_string(x = "year", y = input$column, color = "'Country 2'")) +
         labs(x = "Year",
-             y = input$column) +
-        scale_color_manual(name = "Country", values = c("Country 1" = "red", "Country 2" = "blue"),
-                           labels = c(input$country, input$country2))
+             y = label_map[input$column]) +
+        scale_color_manual(name = "Country", values = c("Country 1" = "#F8766D", "Country 2" = "#00BA38"),
+                           labels = c(countryList[1], countryList[2]))
     } else {
       ggplot(filtered_data(), aes_string(x = "year", y = input$column, color = "'Country 1'")) +
         geom_line() +
         labs(x = "Year",
-             y = input$column) +
+             y = label_map[input$column]) +
         scale_color_manual(name = "Country", 
-                           values = c("Country 1" = "red"),
-                           labels = c(input$country))
+                           values = c("Country 1" = "#F8766D"),
+                           labels = c(countryList[1]))
     }
   })
   
   # Create the map based on the filtered data
   output$map <- renderLeaflet({
     # Create a data frame with only the selected countries' coordinates
-    selected_countries <- unique(dt.merged[reporter_name %in% c(input$country, input$country2, input$country3),
+    selected_countries <- unique(dt.merged[reporter_name %in% input$comp_countryInput,
                                            c("reporter_name","reporter_lat", "reporter_long")])
     # Create a leaflet map centered on the selected countries or the world
     if (nrow(selected_countries) > 0) {
@@ -324,8 +329,8 @@ server <- function(input, output, session) {
                                                                        backgroundColor = "#f2f2f2",opacity = 
                                                                          0.4)) %>%
         addCircleMarkers(data = selected_countries, lng = ~reporter_long, lat = ~reporter_lat, label = ~reporter_name, radius = 10,
-                         color = "red",
-                         fillColor = "red",
+                         color = colorFactor(palette = c("#F8766D", "#619CFF", "#00BA38"), domain = 1:3)(1:nrow(selected_countries)),
+                         fillColor = colorFactor(palette = c("#F8766D", "#619CFF", "#00BA38"), domain = 1:3)(1:nrow(selected_countries)),
                          fillOpacity = 0.8,
                          stroke = FALSE)
     } else {
