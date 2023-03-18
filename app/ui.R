@@ -7,13 +7,24 @@ library(shinythemes)
 
 # Define UI --------------------------------------------------------------------
 ui <- fluidPage(
+  tags$style(HTML("
+    .irs-bar {
+      background-color: #58B99D !important;
+    }
+
+    .irs-from, .irs-to, .irs-single, .irs-handle > i:first-child {
+      background-color: #58B99D !important;
+    }
+  ")),
   theme = shinytheme("flatly"),
   navbarPage(
     title <- "International Trade Analysis",
     tabPanel("Trade Network Map",
              sidebarLayout(
                sidebarPanel(
-                 img(src = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/World_Trade_Organization_%28logo_and_wordmark%29.svg/2560px-World_Trade_Organization_%28logo_and_wordmark%29.svg.png", width = "100%"),
+                 #Adding logo to sidebar
+                 img(src = "logo.svg",width="80%", style = "margin-bottom: 30px;"),
+                 #Introducing Inputs for the user to select type of trade, country, minimum trade value and years to plot 
                  selectInput(inputId = "trader.map", 
                              label = "Select Imports or Exports:",
                              choices = c("Exports" = "reporter_name","Imports" 
@@ -53,7 +64,7 @@ ui <- fluidPage(
     tabPanel("Compare Countries",
              sidebarLayout(
                sidebarPanel(
-                 img(src = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/World_Trade_Organization_%28logo_and_wordmark%29.svg/2560px-World_Trade_Organization_%28logo_and_wordmark%29.svg.png", width = "100%"),
+                 img(src = "logo.svg",width="80%", style = "margin-bottom: 30px;"),
                  selectizeInput(
                    inputId = "country.comp",
                    label = "Country:",
@@ -94,7 +105,7 @@ ui <- fluidPage(
     tabPanel("Community Analysis",
              sidebarLayout(
                sidebarPanel(
-                 img(src = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/World_Trade_Organization_%28logo_and_wordmark%29.svg/2560px-World_Trade_Organization_%28logo_and_wordmark%29.svg.png", width = "100%"),
+                 img(src = "logo.svg",width="80%", style = "margin-bottom: 30px;"),
                  # Set year range
                  selectInput(inputId = "year.comm",
                              label = "Select Year Range:",
@@ -128,7 +139,7 @@ ui <- fluidPage(
     tabPanel("Descriptives",
              sidebarLayout(
                sidebarPanel(
-                 img(src = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/World_Trade_Organization_%28logo_and_wordmark%29.svg/2560px-World_Trade_Organization_%28logo_and_wordmark%29.svg.png", width = "80%"),
+                 img(src = "logo.svg",width="80%", style = "margin-bottom: 30px;"),
                  selectInput(
                    inputId = "continent.des",
                    label = "Select a continent: ",
@@ -183,7 +194,7 @@ ui <- fluidPage(
       fluidRow(
         column(
           width = 3,
-          img(src = "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/World_Trade_Organization_%28logo_and_wordmark%29.svg/2560px-World_Trade_Organization_%28logo_and_wordmark%29.svg.png", width = "100%"),
+          img(src = "logo.svg",width="80%", style = "margin-bottom: 30px;"),
         ),
         column(
           width = 3,
