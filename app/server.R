@@ -13,19 +13,27 @@ server <- function(input, output, session) {
     
     if (input$trader.map == "reporter_name") {
       dt.trade.country <- dt.trade[dt.trade$reporter_name == input$country.map, ]
-      dt.trade.country.year <- dt.trade.country[dt.trade.country$year >= input$year.map[1] &
-                                                  dt.trade.country$year <= input$year.map[2], ]
-      dt.trade.country.year <- dt.trade.country.year[dt.trade.country.year$trade_value_usd / 
-                                                       max(dt.trade.country.year$trade_value_usd) * 
+      dt.trade.country.year <- dt.trade.country[dt.trade.country$year >= 
+                                                  input$year.map[1] &
+                                                  dt.trade.country$year <= 
+                                                  input$year.map[2], ]
+      dt.trade.country.year <- dt.trade.country.year[dt.trade.country.year
+                                                     $trade_value_usd / 
+                                                       max(dt.trade.country.year
+                                                           $trade_value_usd) * 
                                                        100 >= input$weight.map, ]
       
       
     } else {
       dt.trade.country <- dt.trade[ dt.trade$partner_name == input$country.map, ]
-      dt.trade.country.year <- dt.trade.country[dt.trade.country$year >= input$year.map[1] &
-                                                  dt.trade.country$year <= input$year.map[2], ]
-      dt.trade.country.year <- dt.trade.country.year[dt.trade.country.year$trade_value_usd / 
-                                                       max(dt.trade.country.year$trade_value_usd) * 
+      dt.trade.country.year <- dt.trade.country[dt.trade.country$year >= 
+                                                  input$year.map[1] &
+                                                  dt.trade.country$year <= 
+                                                  input$year.map[2], ]
+      dt.trade.country.year <- dt.trade.country.year[dt.trade.country.year$
+                                                       trade_value_usd / 
+                                                       max(dt.trade.country.year$
+                                                             trade_value_usd) * 
                                                        100 >= input$weight.map, ]
       
     }
@@ -34,7 +42,8 @@ server <- function(input, output, session) {
     df <- data.frame("from" = dt.trade.country.year$reporter_name,
                      "to" = dt.trade.country.year$partner_name)
     
-    #checking if there is data from the inputs demanded my the user, if not, map shows a message saying that no data is available
+    #checking if there is data from the inputs demanded my the user, 
+    #if not, map shows a message saying that no data is available
     
     if (nrow(df) == 0) {
       popup <- paste0("No data available for selected country")
@@ -42,34 +51,49 @@ server <- function(input, output, session) {
                addPopups(lng = 0, lat = 0, popup = popup))
     }
     
-    # Creating graph with data frame where the vertices are the dt.meta data table containing all the countries with their longitude and latitude as previously explained 
+    # Creating graph with data frame where the vertices are the dt.meta 
+    #data table containing all the countries with their longitude and latitude 
+    #as previously explained 
     g <- graph_from_data_frame(df, directed = TRUE, vertices = dt.meta)
     
     # Setting weights as the trade value 
-    g <- set_edge_attr(g, "weight", value = dt.trade.country.year$trade_value_usd)
-    # Sum the weights for duplicate edges (we would need this if we select multiple years)
-    g <- simplify(g, remove.multiple = TRUE, edge.attr.comb = list(weight = "sum", year = "concat"))
+    g <- set_edge_attr(g, "weight", 
+                       value = dt.trade.country.year$trade_value_usd)
+    # Sum the weights for duplicate edges (we would need this 
+    #if we select multiple years)
+    g <- simplify(g, remove.multiple = TRUE, 
+                  edge.attr.comb = list(weight = "sum", year = "concat"))
     
-    # Sum the weights for duplicate edges (we would need this if we select multiple years)
-    g <- simplify(g, remove.multiple = TRUE, edge.attr.comb = list(weight = "sum", year = "concat"))
+    # Sum the weights for duplicate edges (we would need this 
+    #if we select multiple years)
+    g <- simplify(g, remove.multiple = TRUE, 
+                  edge.attr.comb = list(weight = "sum", year = "concat"))
     
     # Remove vertices with degree 0
     g <- delete.vertices(g, which(degree(g) == 0))
     
-    # Retrieving data frame form the graph to get the coordinates of the vertices by summing longitude and latitude
+    # Retrieving data frame form the graph to get the coordinates of the 
+    #vertices by summing longitude and latitude
     gg <- get.data.frame(g, "both")
     vert <- gg$vertices
     coordinates(vert) <- ~lon + lat
     
-    # Creating spatial lines from the edges of the graph with the weight of the trade value as an attribute
+    # Creating spatial lines from the edges of the graph with the weight of 
+    #the trade value as an attribute
     
-    # Retrieving the edges of the graph as a data frame from the output of get.data.frame(g, "both").
+    # Retrieving the edges of the graph as a data frame from the output of 
+    #get.data.frame(g, "both").
     edges <- gg$edges
     
-    # Retrieving the weights of the edges from the attribute named "weight" in the graph g.
+    # Retrieving the weights of the edges from the attribute named "weight" 
+    #in the graph g.
     weights <- E(g)$weight
     
-    # Creating a list of SpatialLines objects from the vertices data frame vert using the edges data frame. For each row i in the edges data frame, it extracts the "from" and "to" vertex names, retrieves the corresponding rows from vert, creates a SpatialLines object from these vertices, and stores it in the list.
+    # Creating a list of SpatialLines objects from the vertices data frame vert 
+    #using the edges data frame. For each row i in the edges data frame, 
+    #it extracts the "from" and "to" vertex names, retrieves the corresponding 
+    #rows from vert, creates a SpatialLines object from these vertices, and 
+    #stores it in the list.
     
     edges <- lapply(1:nrow(edges), function(i) {
       as(rbind(vert[vert$name == edges[i, "from"], ],
@@ -77,23 +101,32 @@ server <- function(input, output, session) {
          "SpatialLines")
     })
     
-    #This loop assigns unique IDs to the SpatialLines objects in the list edges using the spChFIDs function. The new IDs are character strings generated from the index i.
+    #This loop assigns unique IDs to the SpatialLines objects in the list edges 
+    #using the spChFIDs function. The new IDs are character strings generated 
+    #from the index i.
     
     for (i in seq_along(edges)) {
       edges[[i]] <- spChFIDs(edges[[i]], as.character(i))
     }
     
-    # Combining the SpatialLines objects in the list edges into a single object of class SpatialLines.
+    # Combining the SpatialLines objects in the list edges into a single 
+    #object of class SpatialLines.
     edges <- do.call(rbind, edges)
     
-    # Creating a data frame df.edges with two columns: "id" and "weight". The "id" column contains sequential integers, and the "weight" column contains the weights of the edges.
+    # Creating a data frame df.edges with two columns: "id" and "weight". 
+    #The "id" column contains sequential integers, and the "weight" column 
+    #contains the weights of the edges.
     df.edges <- data.frame(id = seq_along(edges), weight = weights)
     
-    # Combining the SpatialLines object edges with the data frame df.edges to create a SpatialLinesDataFrame. The resulting object contains both the spatial information (the lines connecting the vertices) and the attribute information (the weights of the edges)
+    # Combining the SpatialLines object edges with the data frame df.edges to 
+    #create a SpatialLinesDataFrame. The resulting object contains both the 
+    #spatial information (the lines connecting the vertices) and the attribute 
+    #information (the weights of the edges)
     edges <- SpatialLinesDataFrame(edges, data = df.edges)
     
     #defining color palette for weights on the map used below
-    pal <- colorNumeric(palette = "YlOrRd", domain = c(min(df.edges$weight), max(df.edges$weight)))
+    pal <- colorNumeric(palette = "YlOrRd", domain = c(min(df.edges$weight),
+                                                       max(df.edges$weight)))
     
     #long and lat for setting zoom of the map
     dt.zoom <- dt.meta[dt.meta$name == input$country.map, ]
@@ -102,10 +135,15 @@ server <- function(input, output, session) {
     leaflet(vert) %>%
       
       #Format of the map
-      addProviderTiles("Stamen.Toner", options = providerTileOptions(noWrap = TRUE, zoomSnap = 0, 
-                                                                     attributionControl = FALSE, 
-                                                                     backgroundColor = "#f2f2f2",
-                                                                     opacity = 0.4)) %>%
+      addProviderTiles("Stamen.Toner", 
+                       options = providerTileOptions(noWrap = TRUE, 
+                                                     zoomSnap = 0, 
+                                                                     
+                                                     attributionControl = FALSE, 
+                                                                     
+                                                     backgroundColor = "#f2f2f2",
+                                                                     
+                                                     opacity = 0.4)) %>%
       #Adding red circles on edges
       addCircleMarkers(data = vert, radius = 2,
                        color = "red",
@@ -113,12 +151,15 @@ server <- function(input, output, session) {
                        fillOpacity = 0.8,
                        stroke = FALSE) %>%
       
-      #Adding lines connecting edges with a color scheme representing the different weights of the trades
+      #Adding lines connecting edges with a color scheme representing the 
+      #different weights of the trades
       addPolylines(data = edges, weight = 2, color = ~pal(weight)) %>%
       
-      #Adding legend for color of the lines representing the weights of exports and import's trade value
+      #Adding legend for color of the lines representing the weights of exports
+      #and import's trade value
       addLegend(position = "bottomright", pal = pal, values = df.edges$weight, 
-                title = "Trade Value (USD)", labFormat = labelFormat(suffix = " USD", digits = 0)) %>%
+                title = "Trade Value (USD)", 
+                labFormat = labelFormat(suffix = " USD", digits = 0)) %>%
       
       setView(lng = dt.zoom$lon, lat = dt.zoom$lat, zoom = 2)
     
@@ -126,13 +167,15 @@ server <- function(input, output, session) {
   
   output$text.map <- renderUI({
     
-    HTML(paste(" ", "<br>", "This tab allows us to explore the international trade network of a selected
-               country and time frame displayed on the map above. The user can choose to visualise either
-               imports or exports of the selected country. For instance, by default, Ghana was selected as
-               the country, and the map exhibits its export trade through lines connecting to all its export
-               destinations. These lines are color-coded to indicate the increase in trade value. A minimum 
-               trade value can be selected making it easier to interpret the high-value trades. For Ghana, we 
-               can deduce that its most significant export partner is India.",
+    HTML(paste(" ", "<br>", "This tab allows us to explore the international 
+    trade network of a selected country and time frame displayed on the map above. 
+    The user can choose to visualise either imports or exports of the selected 
+    country. For instance, by default, Ghana was selected as the country, and 
+    the map exhibits its export trade through lines connecting to all its export
+    destinations. These lines are color-coded to indicate the increase in trade 
+    value. A minimum trade value can be selected making it easier to interpret 
+    the high-value trades. For Ghana, we can deduce that its most significant 
+               export partner is India.",
                " ", "<br>",
                " ", "<br>"))
     })
@@ -140,7 +183,9 @@ server <- function(input, output, session) {
   #Centrality Table Output
   output$centralities.map <- renderDT({
     
-    dt.trade.year <- dt.trade[dt.trade$year >= input$year.map[1] & dt.trade$year <= input$year.map[2], ]
+    dt.trade.year <- dt.trade[dt.trade$year >=
+                                input$year.map[1] & dt.trade$year <= 
+                                input$year.map[2], ]
     dt.trade.edgelist <- dt.trade.year[ , c('reporter_name', 'partner_name')]
     dt.trade.edgelist
     
@@ -151,10 +196,13 @@ server <- function(input, output, session) {
     g.trade <- graph_from_edgelist(m.trade, directed=TRUE)
     
     
-    # 3. Set the weight of the edges (trade_value_usd) & add the year as an attribute
+    # 3. Set the weight of the edges (trade_value_usd) & add the year as an 
+    # attribute
     E(g.trade)$weight <- dt.trade.year$trade_value_usd
-    # Sum the weights for duplicate edges (we would need this if we select multiple years)
-    g <- simplify(g.trade, remove.multiple = TRUE, edge.attr.comb = list(weight = "sum", year = "concat"))
+    # Sum the weights for duplicate edges (we would need this if we select 
+    # multiple years)
+    g <- simplify(g.trade, remove.multiple = TRUE, 
+                  edge.attr.comb = list(weight = "sum", year = "concat"))
     
     
     # Extract the corresponding row from the data frame
@@ -163,17 +211,21 @@ server <- function(input, output, session) {
       DegreeCentrality = degree(g, v = input$country.map),
       ClosenessCentrality = closeness(g, v = input$country.map),
       BetweennessCentrality = betweenness(g, v = input$country.map),
-      EigenvectorCentrality = round(eigen_centrality(g)$vector[input$country.map], 4),
+      EigenvectorCentrality = round(eigen_centrality(g)$vector[input$country.map],
+                                    4),
       ClusteringCoefficient = round(transitivity(g, v = input$country.map), 4)
     )
     
-    names(df.map) <- c("Degree Centrality", "Closeness Centrality", "Betweenness Centrality", "Eigenvector Centrality", "Clustering Coefficient")
+    names(df.map) <- c("Degree Centrality", "Closeness Centrality", 
+                       "Betweenness Centrality", "Eigenvector Centrality", 
+                       "Clustering Coefficient")
     
     # Transpose the table
     df.map.t <- t(df.map)
     
     df.map.t
-  }, options = list(searching = FALSE, lengthChange = FALSE, dom = 't', paging = FALSE))
+  }, options = list(searching = FALSE, lengthChange = FALSE, 
+                    dom = 't', paging = FALSE))
   
   
   # Data table output
@@ -183,14 +235,17 @@ server <- function(input, output, session) {
     
     if (input$partner.data != "") {
       dt.filtered.data <-
-        dt.filtered.data[dt.filtered.data$partner_name %in% input$partner.data, ]
+        dt.filtered.data[dt.filtered.data$partner_name %in% 
+                           input$partner.data, ]
     }
     if (input$reporter.data != "") {
       dt.filtered.data <-
-        dt.filtered.data[dt.filtered.data$reporter_name %in% input$reporter.data, ]
+        dt.filtered.data[dt.filtered.data$reporter_name %in% 
+                           input$reporter.data, ]
     }
     if (input$year.data != "") {
-      dt.filtered.data <- dt.filtered.data[dt.filtered.data$year == input$year.data, ]
+      dt.filtered.data <- dt.filtered.data[dt.filtered.data$year == 
+                                             input$year.data, ]
     }
     
     datatable(
@@ -210,7 +265,7 @@ server <- function(input, output, session) {
   })
   
   output$continent.count.des <- renderPlot ({
-    g <- create.trade.graph(dt.trade, input$year.des, input$continent.des)
+    g <- create.trade.graph(dt.trade, input$continent.des)
     
     # Count number of nodes per continent
     df <- as.data.frame(table(V(g)$continent))
@@ -225,7 +280,7 @@ server <- function(input, output, session) {
   # Histogram output
   output$degree.dist.des <- renderPlot({
     # Create trade graph
-    g <- create.trade.graph(dt.trade, input$year.des, input$continent.des)
+    g <- create.trade.graph(dt.trade, input$continent.des)
     
     # Plot degree distribution
     hist(
@@ -234,20 +289,18 @@ server <- function(input, output, session) {
       xlab = "Degree",
       ylab = "Frequency",
       col = "#58B99D",
-      breaks = seq(0, max(degree(g)) + 1, by = 1)
+      breaks = seq(0, max(degree(g)) + 30, by = 30)
     )
   })
   
   output$text.degree.dist <- renderUI({
     
-    HTML(paste(" ", "<br>", "This histogram displays the degree distribution of trade for 
-    the selected countries. It illustrates how frequently countries have different numbers 
-    of connections (degrees) in the trade graph.For instance, if we select European countries, 
-               the histogram will be left-skewed, indicating that most countries have a high degree.
-               This is due to the fact that these countries are more industrialized. In contrast, 
-               if we choose African countries, the degree distribution will be left-skewed, meaning 
-               that countries tend to have a lower degree. This is because there are more 
-               underdeveloped regions in the selected continent.",
+    HTML(paste(" ", "<br>", "This histogram displays the degree distribution of 
+    trade for the selected countries. It illustrates how frequently countries 
+    have different numbers of connections (degrees) in the trade graph.For 
+    instance, if we select European countries, the histogram will be left-skewed, 
+    indicating that most countries have a high degree. This is due to the fact 
+               that these countries are more industrialized.",
                " ", "<br>",
                " ", "<br>"))
   })
@@ -255,7 +308,7 @@ server <- function(input, output, session) {
   # KPI table output
   output$table.overview.des <- renderDT({
     # Create trade graph
-    g <- create.trade.graph(dt.trade, input$year.des, input$continent.des)
+    g <- create.trade.graph(dt.trade, input$continent.des)
     
     # Calculate KPIs and store in a data frame
     df.kpi <- data.frame(
@@ -280,13 +333,14 @@ server <- function(input, output, session) {
     rownames(df.kpi.t) <- tools::toTitleCase(gsub("_", " ", rownames(df.kpi.t)))
     
     df.kpi.t
-  }, options = list(searching = FALSE, lengthChange = FALSE, dom = 't', paging = FALSE))
+  }, options = list(searching = FALSE, lengthChange = FALSE, 
+                    dom = 't', paging = FALSE))
   
   
   
   output$kpi.chart.des <- renderPlot({
     # Create trade graph
-    g <- create.trade.graph(dt.trade, input$year.des, input$continent.des)
+    g <- create.trade.graph(dt.trade, input$continent.des)
     
     # Prepare data for ggplot
     df.trade.data <- data.frame(trade_value = E(g)$weight)
@@ -308,14 +362,17 @@ server <- function(input, output, session) {
   df.filter.data <- reactive({
     l.country <- sort(input$country.comp)
     
-    dt.merged[reporter_name == l.country[1] & year >= input$year.comp[1] & year <= input$year.comp[2]]
+    dt.merged[reporter_name == 
+                l.country[1] & year >= input$year.comp[1] & 
+                year <= input$year.comp[2]]
   })
   
   # Create reactive data frames for the second and third country selections
   df.filter.data.2 <- reactive({
     l.country <- sort(input$country.comp)
     if (!is.null(l.country[2])) {
-      dt.merged[reporter_name == l.country[2] & year >= input$year.comp[1] & year <= input$year.comp[2]]
+      dt.merged[reporter_name == l.country[2] & year >= input$year.comp[1] & 
+                  year <= input$year.comp[2]]
     } else {
       NULL
     }
@@ -324,7 +381,8 @@ server <- function(input, output, session) {
   df.filter.data.3 <- reactive({
     l.country <- sort(input$country.comp)
     if (!is.null(l.country[3])) {
-      dt.merged[reporter_name == l.country[3] & year >= input$year.comp[1] & year <= input$year.comp[2]]
+      dt.merged[reporter_name == l.country[3] & 
+                  year >= input$year.comp[1] & year <= input$year.comp[2]]
     } else {
       NULL
     }
@@ -335,24 +393,43 @@ server <- function(input, output, session) {
     l.country <- sort(input$country.comp)
     if (!is.null(df.filter.data.2()) & !is.null(df.filter.data.3())) {
       ggplot() +
-        geom_line(data = df.filter.data(), aes_string(x = "year", y = input$column, color = "'Country 1'"), size = 2) +
-        geom_line(data = df.filter.data.2(), aes_string(x = "year", y = input$column, color = "'Country 2'"), size = 2) +
-        geom_line(data = df.filter.data.3(), aes_string(x = "year", y = input$column, color = "'Country 3'"), size = 2) +
+        geom_line(data = df.filter.data(), 
+                  aes_string(x = "year", 
+                             y = input$column, 
+                             color = "'Country 1'"), size = 2) +
+        geom_line(data = df.filter.data.2(), 
+                  aes_string(x = "year", 
+                             y = input$column, 
+                             color = "'Country 2'"), size = 2) +
+        geom_line(data = df.filter.data.3(), 
+                  aes_string(x = "year", y = input$column, 
+                             color = "'Country 3'"), size = 2) +
         labs(x = "Year",
              y = label.map[input$column]) +
         scale_color_manual(name = "Country", 
-                           values = c("Country 1" = "#F8766D", "Country 2" = "#619CFF", "Country 3" = "#00BA38"),
+                           values = c("Country 1" = "#F8766D", 
+                                      "Country 2" = "#619CFF", 
+                                      "Country 3" = "#00BA38"),
+                           
                            labels = c(l.country[1], l.country[2], l.country[3]))
     } else if (!is.null(df.filter.data.2())) {
       ggplot() +
-        geom_line(data = df.filter.data(), aes_string(x = "year", y = input$column, color = "'Country 1'")) +
-        geom_line(data = df.filter.data.2(), aes_string(x = "year", y = input$column, color = "'Country 2'")) +
+        geom_line(data = df.filter.data(), 
+                  aes_string(x = "year", y = input$column, 
+                             color = "'Country 1'")) +
+        geom_line(data = df.filter.data.2(), 
+                  aes_string(x = "year", y = input$column, 
+                             color = "'Country 2'")) +
         labs(x = "Year",
              y = label.map[input$column]) +
-        scale_color_manual(name = "Country", values = c("Country 1" = "#F8766D", "Country 2" = "#00BA38"),
+        scale_color_manual(name = "Country", 
+                           values = c("Country 1" = "#F8766D", 
+                                      "Country 2" = "#00BA38"),
                            labels = c(l.country[1], l.country[2]))
     } else {
-      ggplot(df.filter.data(), aes_string(x = "year", y = input$column, color = "'Country 1'")) +
+      ggplot(df.filter.data(), aes_string(x = "year", 
+                                          y = input$column, 
+                                          color = "'Country 1'")) +
         geom_line() +
         labs(x = "Year",
              y = label.map[input$column]) +
@@ -365,26 +442,41 @@ server <- function(input, output, session) {
   # Create the map based on the filtered data
   output$map.comp <- renderLeaflet({
     # Create a data frame with only the selected countries' coordinates
-    df.selected.countries <- unique(dt.merged[reporter_name %in% input$country.comp,
-                                           c("reporter_name", "reporter_lat", "reporter_long")])
+    df.selected.countries <- unique(dt.merged[reporter_name %in% 
+                                                input$country.comp,
+                                           c("reporter_name", "reporter_lat", 
+                                             "reporter_long")])
     # Create a leaflet map centered on the selected countries or the world
     if (nrow(df.selected.countries) > 0) {
       leaflet() %>%
-        addProviderTiles("Stamen.Toner", options = providerTileOptions(noWrap = TRUE, zoomSnap = 0, 
-                                                                       attributionControl = FALSE, 
-                                                                       backgroundColor = "#f2f2f2", opacity = 
-                                                                         0.4)) %>%
-        addCircleMarkers(data = df.selected.countries, lng = ~reporter_long, lat = ~reporter_lat, label = ~reporter_name, radius = 10,
-                         color = colorFactor(palette = c("#F8766D", "#619CFF", "#00BA38"), domain = 1:3)(1:nrow(df.selected.countries)),
-                         fillColor = colorFactor(palette = c("#F8766D", "#619CFF", "#00BA38"), domain = 1:3)(1:nrow(df.selected.countries)),
+        addProviderTiles("Stamen.Toner", 
+                         options = providerTileOptions(noWrap = TRUE, 
+                                                       zoomSnap = 0, 
+                                                       attributionControl = FALSE, 
+                                                       backgroundColor = "#f2f2f2",
+                                                       opacity = 0.4)) %>%
+        
+        addCircleMarkers(data = df.selected.countries, lng = ~reporter_long, 
+                         lat = ~reporter_lat, label = ~reporter_name, 
+                         radius = 10,
+                         color = colorFactor(palette = c("#F8766D",
+                                                         "#619CFF",
+                                                         "#00BA38"), 
+                                  domain = 1:3)(1:nrow(df.selected.countries)),
+                         fillColor = colorFactor(palette = c("#F8766D", 
+                                                             "#619CFF", 
+                                                             "#00BA38"), 
+                                  domain = 1:3)(1:nrow(df.selected.countries)),
                          fillOpacity = 0.8,
                          stroke = FALSE)
     } else {
       leaflet() %>%
-        addProviderTiles("Stamen.Toner", options = providerTileOptions(noWrap = TRUE, zoomSnap = 0, 
-                                                                       attributionControl = FALSE, 
-                                                                       backgroundColor = "#f2f2f2",opacity = 
-                                                                         0.4)) %>%
+        addProviderTiles("Stamen.Toner", 
+                         options = providerTileOptions(noWrap = TRUE,
+                                                      zoomSnap = 0, 
+                                                    attributionControl = FALSE, 
+                              backgroundColor = "#f2f2f2", opacity = 0.4)) %>%
+        
       setView(lng = 0, lat = 0, zoom = 2) %>%
       leafletOptions(margin = c(100, 50, 50, 50))
     }

@@ -64,19 +64,15 @@ label.map = c( "export_value_usd" = "Export Value",
 
 # Helper Functions -------------------------------------------------------------
 # Create graph from trade data
-create.trade.graph <- function(dt, year, continent) {
-  # Subset data to selected year
-  dt.year <- dt[year %in% year]
-  
-  # Get edge list
-  dt.edgelist <- dt.year[, c('reporter_name', 'partner_name')]
+  create.trade.graph <- function(dt, continent) {
+  dt.edgelist <- dt[, c('reporter_name', 'partner_name')]
   
   # Convert to igraph
   m <- as.matrix(dt.edgelist)
   g <- graph_from_edgelist(m, directed = TRUE)
   
   # Set edge weights
-  edge.attributes(g)$weight <- dt.year$trade_value_usd
+  edge.attributes(g)$weight <- dt$trade_value_usd
   
   # Set vertex attributes
   V(g)$continent <-  unlist(l.json.data[V(g)$name])

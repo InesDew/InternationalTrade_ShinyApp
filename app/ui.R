@@ -24,7 +24,8 @@ ui <- fluidPage(
                sidebarPanel(
                  #Adding logo to sidebar
                  img(src = "logo.svg",width="80%", style = "margin-bottom: 30px;"),
-                 #Introducing Inputs for the user to select type of trade, country, minimum trade value and years to plot 
+                 #Introducing Inputs for the user to select type of trade, 
+                 #country, minimum trade value and years to plot 
                  selectInput(inputId = "trader.map", 
                              label = "Select Imports or Exports:",
                              choices = c("Exports" = "reporter_name","Imports" 
@@ -162,16 +163,7 @@ ui <- fluidPage(
                      "Antarctica"
                    ),
                    multiple = TRUE
-                 ),
-                 sliderInput(
-                   "year.des",
-                   "Year: ",
-                   min = min(dt.trade$year),
-                   max = max(dt.trade$year),
-                   value = c(min(dt.trade$year), max(dt.trade$year)),
-                   step = 1,
-                   sep = ""
-                 ),
+                 )
                ),
                mainPanel(
                  tabsetPanel(
