@@ -177,7 +177,7 @@ server <- function(input, output, session) {
   
   
   # Data table output
-  output$data_table <- renderDT({
+  output$table.overview.data <- renderDT({
     # Filter data
     dt.filtered.data <- dt.trade
     
@@ -209,11 +209,7 @@ server <- function(input, output, session) {
     )
   })
   
-  output$column_names <- renderText({
-    paste(colnames(dt.trade), collapse = ", ")
-  })
-  
-  output$continent_count <- renderPlot ({
+  output$continent.count.des <- renderPlot ({
     g <- create.trade.graph(dt.trade, input$year.des, input$continent.des)
     
     # Count number of nodes per continent
@@ -227,7 +223,7 @@ server <- function(input, output, session) {
   })
   
   # Histogram output
-  output$degreeDist <- renderPlot({
+  output$degree.dist.des <- renderPlot({
     # Create trade graph
     g <- create.trade.graph(dt.trade, input$year.des, input$continent.des)
     
@@ -257,7 +253,7 @@ server <- function(input, output, session) {
   })
   
   # KPI table output
-  output$table.overview.data <- renderDT({
+  output$table.overview.des <- renderDT({
     # Create trade graph
     g <- create.trade.graph(dt.trade, input$year.des, input$continent.des)
     
@@ -283,13 +279,12 @@ server <- function(input, output, session) {
     # Make column names more readable
     rownames(df.kpi.t) <- tools::toTitleCase(gsub("_", " ", rownames(df.kpi.t)))
     
-    
     df.kpi.t
   }, options = list(searching = FALSE, lengthChange = FALSE, dom = 't', paging = FALSE))
   
   
   
-  output$kpi_chart <- renderPlot({
+  output$kpi.chart.des <- renderPlot({
     # Create trade graph
     g <- create.trade.graph(dt.trade, input$year.des, input$continent.des)
     
