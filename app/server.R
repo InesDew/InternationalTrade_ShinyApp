@@ -602,45 +602,26 @@ server <- function(input, output, session) {
   
   output$CommTextModularity <- renderUI({
     HTML(paste(" ", "<br>",
-               "We analyze the modularity score of our trade network over time 
-               to identify patterns indicating a breakdown in community structure. 
-               A decrease in score may result from factors like globalization or 
-               new trade relationships. The modularity score showed a steady 
-               decrease in 2000-2013, with a steeper drop in 2013-2015. The crash 
-               in modularity score, and thus an increase in globalization, may 
-               be explained by trade liberalization, e-commerce, and emerging 
-               markets like China, India, and Brazil. From 2015-2018, the 
-               modularity score increased from 0.22 to 0.29, suggesting a 
-               decrease in globalization, possibly due to protectionist policies 
-               by the UK (Brexit), the US (Trump’s tariffs), and China's economic 
-               slowdown.",
+               "<ul> <li> An increase in modularity score over time may suggest 
+               that the communities in the network are becoming more distinct 
+               and separated from each other, potentially due to changes in trade 
+               policies, economic conditions, or cultural factors. This could 
+               indicate that there are well-defined clusters of countries that 
+               predominantly trade with each other. </li>",
+               "<li> A decrease in modularity score over time may indicate that 
+               the communities in the network are becoming less distinct and more 
+               interconnected, potentially due to factors such as increasing 
+               globalization, economic integration, or changes in trade patterns. 
+               This could suggest that countries are trading with a wider range 
+               of partners and that there are fewer clear clusters of trade 
+               relationships within the network. </li> </ul>",
+               " ", "<br>",
+               "It is important to note that changes in modularity score cannot 
+               be solely attributed to any single factor, and the specific reasons 
+               for these changes may be influenced by a complex interplay of 
+               various factors.",
                " ", "<br>",
                " ", "<br>"))
   })
   
-  output$sources <- renderUI({
-    HTML(paste(" ", "<br>",
-               "<h5>Sources</h5>", "<br>",
-               "<ul> <li> Pons, P., & Latapy, M. (2005). Computing communities in 
-               large networks using random walks. Journal of Graph Algorithms 
-               and Applications, 10(2), 191-218. </li>",
-               "<li> Blondel, V. D., Guillaume, J. L., Lambiotte, R., & Lefebvre, 
-               E. (2008). Fast unfolding of communities in large networks. 
-               Journal of Statistical Mechanics: Theory and Experiment, 2008(10), 
-               P10008. </li>",
-               "<li> Fortunato, S. (2010). Community detection in graphs. 
-               Physics Reports, 486(3-5), 75-174. </li>", 
-               "<li> Newman, M. E. J. (2018). Networks. Oxford University Press. 
-               </li>",
-               "<li> McLean, R. C., & Leitner, D. (2013). Node-centric community 
-               detection in directed networks. Physical Review E, 87(1), 012803. 
-               </li>",
-               "<li> Yucel, R., & Demiralay, S. (2021). Complex network analysis 
-               of international trade: A review. Journal of Cleaner Production, 
-               280, 124219. </li>",
-               "<li> 'Tropic of Cancer.' National Geographic Society, 
-               https://www.nationalgeographic.org/encyclopedia/tropic-cancer/. 
-               </li></ul>",
-               " ", "<br>"))
-  })
 }

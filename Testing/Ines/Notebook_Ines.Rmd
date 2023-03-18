@@ -250,7 +250,7 @@ library(remotes)
 library(magrittr)
 library(devtools)
 
-dt.trade <- fread("../../data/cleaned_trade_data.csv")
+dt.trade <- fread("../../app/src/cleaned_trade_data.csv")
 
 # Define UI --------------------------------------------------------------------
 
@@ -329,6 +329,8 @@ server <- function(input, output, session) {
     E(g.trade)$weight <- dt.trade.year$trade_value_usd
     # Remove vertices with degree 0
     g.trade <- delete.vertices(g.trade, which(degree(g.trade) == 0))
+    
+    print(summary(g.trade))
     
     # 5. Community detection: Walktrap algorithm
     walktrap_communities <- walktrap.community(g.trade, weights = E(g.trade)$weight)
