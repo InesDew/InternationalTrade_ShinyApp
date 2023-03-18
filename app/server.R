@@ -384,7 +384,11 @@ server <- function(input, output, session) {
     
     # import the edges SpatialPointsDataFrame that we preprocessed
     path_file <- paste0("src/edges_", input$CommYear, ".shp")
-    edges <- st_read(dsn = path_file)
+    # The dsn argument refers to the directory containing the shapefile,
+    # and layer refers to the name of the shapefile without the .shp extension
+    dsn <- dirname(path_file)
+    layer <- basename(tools::file_path_sans_ext(path_file))
+    edges <- readOGR(dsn = dsn, layer = layer)
     
     # plot map
     community_colors <- hue_pal()(length(unique(vert$community)))
