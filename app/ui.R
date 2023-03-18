@@ -23,7 +23,7 @@ ui <- fluidPage(
              sidebarLayout(
                sidebarPanel(
                  #Adding logo to sidebar
-                 img(src = "world8.svg",width="80%", style = "margin-bottom: 30px;"),
+                 img(src = "logo.svg",width="80%", style = "margin-bottom: 30px;"),
                  #Introducing Inputs for the user to select type of trade, country, minimum trade value and years to plot 
                  selectInput(inputId = "trader.map", 
                              label = "Select Imports or Exports:",
@@ -63,7 +63,7 @@ ui <- fluidPage(
     tabPanel("Compare Countries",
              sidebarLayout(
                sidebarPanel(
-                 img(src = "world8.svg",width="80%", style = "margin-bottom: 30px;"),
+                 img(src = "logo.svg",width="80%", style = "margin-bottom: 30px;"),
                  selectizeInput(
                    inputId = "comp_countryInput",
                    label = "Country:",
@@ -100,7 +100,7 @@ ui <- fluidPage(
     tabPanel("Community Analysis",
              sidebarLayout(
                sidebarPanel(
-                 img(src = "world8.svg",width="80%", style = "margin-bottom: 30px;"),
+                 img(src = "logo.svg",width="80%", style = "margin-bottom: 30px;"),
                  # Set year range
                  selectInput(inputId = "CommYear",
                              label = "Select Year Range:",
@@ -134,7 +134,7 @@ ui <- fluidPage(
     tabPanel("Descriptives",
              sidebarLayout(
                sidebarPanel(
-                 img(src = "world8.svg",width="80%", style = "margin-bottom: 30px;"),
+                 img(src = "logo.svg",width="80%", style = "margin-bottom: 30px;"),
                  selectInput(
                    inputId = "des_continentInput",
                    label = "Select a continent:",
@@ -186,7 +186,7 @@ ui <- fluidPage(
       fluidRow(
         column(
           width = 3,
-          img(src = "world8.svg",width="80%", style = "margin-bottom: 30px;"),
+          img(src = "logo.svg",width="80%", style = "margin-bottom: 30px;"),
         ),
         column(
           width = 3,
